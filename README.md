@@ -20,9 +20,14 @@ logs, and PDFs straight from the public website feed (`/feed/editions.json`,
 
 ## Opening the project
 
-1. Copy the whole `box-score-app` folder to your Mac (AirDrop, iCloud Drive,
-   a USB stick — whatever is easiest).
-2. Double-click `DailyBoxScore.xcodeproj`. It opens in Xcode.
+The project is on GitHub at `https://github.com/toolstem/daily-box-score-ios`.
+
+1. On your Mac, open **Terminal** (Applications → Utilities → Terminal).
+2. Run: `git clone https://github.com/toolstem/daily-box-score-ios.git` (if
+   your Mac says it doesn't know `git`, install the free **Xcode Command Line
+   Tools** when it offers).
+3. Double-click `DailyBoxScore.xcodeproj` inside the new
+   `daily-box-score-ios` folder. It opens in Xcode.
 
 ## First run on your iPhone
 
