@@ -22,6 +22,8 @@ E212B722C97040C8ABD984FD = {isa = PBXBuildFile; fileRef = 13E99A513FE0462BAD7AF6
 B05B078CC1654AA8BE6F9A0E = {isa = PBXBuildFile; fileRef = 8F434FD6D16747B9BA586123; };
 F3504FF6815D49299CA31DBE = {isa = PBXBuildFile; fileRef = 16EE5B43A20B4FDBA064EDBB; };
 C7D2E4A1B3C5D6E7F8090A1B = {isa = PBXBuildFile; fileRef = D8E3F5B2C4D6E7F8091A2B3C; };
+221829FB876E020A4FC512F5 = {isa = PBXBuildFile; fileRef = E302123B7000BFE42530F72E; };
+EF1F5EE9835DD33FC86B3584 = {isa = PBXBuildFile; fileRef = 2640B349E1D8158494E1CBFA; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +45,8 @@ D8E3F5B2C4D6E7F8091A2B3C = {isa = PBXFileReference; lastKnownFileType = sourceco
 16EE5B43A20B4FDBA064EDBB = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 8029B961BFB648C5839187E5 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 0B0E86BE2D8B471FA9F8E6B9 = {isa = PBXFileReference; lastKnownFileType = text.json; path = Configuration.storekit; sourceTree = "<group>"; };
+E302123B7000BFE42530F72E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BoxScoreModels.swift; sourceTree = "<group>"; };
+2640B349E1D8158494E1CBFA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/GameDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,6 +55,8 @@ D8E3F5B2C4D6E7F8091A2B3C = {isa = PBXFileReference; lastKnownFileType = sourceco
 			buildActionMask = 2147483647;
 			files = (
 			);
+				221829FB876E020A4FC512F5,
+				EF1F5EE9835DD33FC86B3584,
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -82,6 +88,7 @@ BE4D581A3C47422A9DD0419B = {
 			children = (
 				16BFDB51751E4D6CB754779B,
 				1DE9A91AA313417E98591448,
+				E302123B7000BFE42530F72E,
 			);
 			name = Models; sourceTree = "<group>";
 		};
@@ -105,6 +112,7 @@ BE4D581A3C47422A9DD0419B = {
 				110D01EC1F5D4762AEA8A87A,
 				8F434FD6D16747B9BA586123,
 				D8E3F5B2C4D6E7F8091A2B3C,
+				2640B349E1D8158494E1CBFA,
 			);
 			name = Views; sourceTree = "<group>";
 		};

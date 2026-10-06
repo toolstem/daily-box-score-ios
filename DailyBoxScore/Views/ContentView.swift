@@ -28,11 +28,75 @@ struct EditionsListView: View {
 
     @State private var jumpDate = Date()
     @State private var jumpedEdition: Edition?
+    @State private var selectedYear: Int?
+    @State private var selectedMonth: Int?
 
     private var dateFormatter: DateFormatter {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
         return fmt
+    }
+
+    /// Years with editions, newest first.
+    private var years: [Int] {
+        let ys = Set(feed.editions.map { Int($0.date.prefix(4)) ?? 0 })
+        return ys.filter { $0 > 0 }.sorted(by: >)
+    }
+
+    private var monthSymbols: [String] {
+        DateFormatter().shortMonthSymbols
+    }
+
+    /// Months (1-12) with editions in the selected year.
+    private func months(for year: Int) -> [Int] {
+        let prefix = "\(year)-"
+        let ms = Set(feed.editions
+            .filter { $0.date.hasPrefix(prefix) }
+            .compactMap { Int($0.date.dropFirst(5).prefix(2)) })
+        return ms.sorted()
+    }
+
+    private var filteredEditions: [Edition] {
+        guard let y = selectedYear, let m = selectedMonth else { return feed.editions }
+        let prefix = String(format: "%d-%02d", y, m)
+        return feed.editions.filter { $0.date.hasPrefix(prefix) }
+    }
+
+    /// Year strip + month strip for jumping through the archive.
+    @ViewBuilder
+    private var yearMonthPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(years, id: \.self) { y in
+                        Button("\(y)") {
+                            selectedYear = y
+                            // Keep the month if it exists in the new year, else pick the latest.
+                            let ms = months(for: y)
+                            if let m = selectedMonth, ms.contains(m) {
+                                // keep
+                            } else {
+                                selectedMonth = ms.last
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(selectedYear == y ? .accentColor : .secondary)
+                    }
+                }
+            }
+            if let y = selectedYear {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(months(for: y), id: \.self) { m in
+                            Button(monthSymbols[m - 1]) { selectedMonth = m }
+                                .buttonStyle(.bordered)
+                                .tint(selectedMonth == m ? .accentColor : .secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     var body: some View {
@@ -60,7 +124,12 @@ struct EditionsListView: View {
                             NameplateView()
                         }
                         Section {
-                            ForEach(feed.editions) { edition in
+                            yearMonthPicker
+                        } header: {
+                            SectionHeading(text: "Browse by Month")
+                        }
+                        Section {
+                            ForEach(filteredEditions) { edition in
                                 NavigationLink(destination: EditionDetailView(edition: edition)) {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(edition.label)
@@ -112,6 +181,11 @@ struct EditionsListView: View {
             if let latest = feed.editions.first,
                let d = dateFormatter.date(from: latest.date) {
                 jumpDate = d
+                let cal = Calendar.current
+                let y = cal.component(.year, from: d)
+                let m = cal.component(.month, from: d)
+                selectedYear = y
+                selectedMonth = m
             }
         }
     }

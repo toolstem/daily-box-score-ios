@@ -10,12 +10,14 @@ struct EditionDetailView: View {
     @EnvironmentObject var favorites: FavoritesStore
 
     @State private var games: [GameEntry] = []
+    @State private var boxScores: [BoxScoreGame] = []
     @State private var isLoadingGames = true
     @State private var pdfURL: URL?
     @State private var pdfPage = 1
     @State private var showingPDF = false
     @State private var isDownloading = false
     @State private var downloadError: String?
+    @State private var selectedBoxScore: BoxScoreGame?
 
     private var favoriteGames: [GameEntry] {
         let favs = Set(favorites.favoriteAbbrevs)
@@ -85,7 +87,20 @@ struct EditionDetailView: View {
             } catch {
                 games = []
             }
+            do {
+                boxScores = try await feed.boxScores(for: edition)
+            } catch {
+                boxScores = []
+            }
             isLoadingGames = false
+        }
+        .navigationDestination(item: $selectedBoxScore) { boxScore in
+            GameDetailView(
+                game: boxScore,
+                dateLabel: edition.label,
+                pdfURL: edition.pdfURL,
+                pdfPage: pageFor(boxScore)
+            )
         }
         .fullScreenCover(isPresented: $showingPDF) {
             if let url = pdfURL {
@@ -105,8 +120,13 @@ struct EditionDetailView: View {
     @ViewBuilder
     private func gameRow(_ game: GameEntry) -> some View {
         Button {
-            pdfPage = game.page ?? 1
-            openPDF()
+            if let boxScore = boxScore(for: game) {
+                selectedBoxScore = boxScore
+            } else {
+                // No native data; fall back to the PDF on the game's page.
+                pdfPage = game.page ?? 1
+                openPDF()
+            }
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -122,6 +142,25 @@ struct EditionDetailView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    /// Match a GameEntry to its full box score by teams. The feed arrays are
+    /// parallel (same order), so the nth entry matches the nth box score
+    /// with those teams — this disambiguates doubleheaders.
+    private func boxScore(for game: GameEntry) -> BoxScoreGame? {
+        let matches = boxScores.filter {
+            $0.away.abbrev == game.awayAbbrev && $0.home.abbrev == game.homeAbbrev
+        }
+        guard !matches.isEmpty else { return nil }
+        let entryIndex = games.filter {
+            $0.awayAbbrev == game.awayAbbrev && $0.homeAbbrev == game.homeAbbrev
+        }.firstIndex(where: { $0.id == game.id }) ?? 0
+        return matches[min(entryIndex, matches.count - 1)]
+    }
+
+    private func pageFor(_ boxScore: BoxScoreGame) -> Int? {
+        boxScores.firstIndex(where: { $0.pk == boxScore.pk })
+            .flatMap { idx in games.indices.contains(idx) ? games[idx].page : nil }
     }
 
     private func openPDF() {

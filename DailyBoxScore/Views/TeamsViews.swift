@@ -90,7 +90,7 @@ struct TeamsListView: View {
 }
 
 /// One club's full season game log, with an opponent filter.
-/// Tapping a game opens the box score PDF on the right page.
+/// Tapping a game opens the native box score; the edition PDF stays one tap away.
 struct TeamDetailView: View {
     let abbrev: String
 
@@ -102,6 +102,10 @@ struct TeamDetailView: View {
     @State private var showingPDF = false
     @State private var isDownloading = false
     @State private var downloadError: String?
+    @State private var selectedBoxScore: BoxScoreGame?
+    @State private var selectedDateLabel = ""
+    @State private var selectedPdfURL: URL?
+    @State private var selectedPdfPage: Int?
 
     private var entry: TeamEntry? { feed.team(abbrev: abbrev) }
 
@@ -168,6 +172,14 @@ struct TeamDetailView: View {
         .task {
             await feed.loadTeams()
         }
+        .navigationDestination(item: $selectedBoxScore) { boxScore in
+            GameDetailView(
+                game: boxScore,
+                dateLabel: selectedDateLabel,
+                pdfURL: selectedPdfURL,
+                pdfPage: selectedPdfPage
+            )
+        }
         .fullScreenCover(isPresented: $showingPDF) {
             if let url = pdfURL {
                 PDFReaderScreen(url: url, page: pdfPage)
@@ -186,8 +198,7 @@ struct TeamDetailView: View {
     @ViewBuilder
     private func gameRow(_ game: TeamGame) -> some View {
         Button {
-            pdfPage = game.page ?? 1
-            openPDF(for: game)
+            openBoxScore(for: game)
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -218,6 +229,33 @@ struct TeamDetailView: View {
         }
         .buttonStyle(.plain)
         .disabled(isDownloading)
+    }
+
+    private func openBoxScore(for game: TeamGame) {
+        Task {
+            isDownloading = true
+            defer { isDownloading = false }
+            do {
+                let scores = try await feed.boxScores(forDate: game.date)
+                // Match by teams: ha == "vs" means we're home, else away.
+                let match = scores.first {
+                    game.ha == "vs"
+                        ? ($0.home.abbrev == abbrev && $0.away.abbrev == game.opp)
+                        : ($0.away.abbrev == abbrev && $0.home.abbrev == game.opp)
+                }
+                if let match {
+                    selectedDateLabel = game.label
+                    selectedPdfURL = game.pdfURL
+                    selectedPdfPage = game.page
+                    selectedBoxScore = match
+                } else {
+                    // No native data; fall back to the PDF on the game's page.
+                    openPDF(for: game)
+                }
+            } catch {
+                openPDF(for: game)
+            }
+        }
     }
 
     private func openPDF(for game: TeamGame) {

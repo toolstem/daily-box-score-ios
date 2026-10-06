@@ -37,6 +37,20 @@ class FeedService: ObservableObject {
         return try JSONDecoder().decode([GameEntry].self, from: data)
     }
 
+    /// Full per-game box scores for an edition, for the native game view.
+    /// URL pattern: feed/boxscore_<date>.json (built by trim_boxscores.py).
+    func boxScores(for edition: Edition) async throws -> [BoxScoreGame] {
+        try await boxScores(forDate: edition.date)
+    }
+
+    func boxScores(forDate date: String) async throws -> [BoxScoreGame] {
+        let url = URL(
+            string: "https://www.toolstem.com/daily-box-score/feed/boxscore_\(date).json"
+        )!
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode([BoxScoreGame].self, from: data)
+    }
+
     /// Loads the per-team season logs (cached after the first load).
     func loadTeams() async {
         guard teamEntries.isEmpty else { return }

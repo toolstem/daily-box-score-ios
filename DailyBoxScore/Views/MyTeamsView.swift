@@ -6,7 +6,10 @@ struct MyTeamsView: View {
     @EnvironmentObject var favorites: FavoritesStore
 
     @State private var latestGames: [GameEntry] = []
+    @State private var latestBoxScores: [BoxScoreGame] = []
+    @State private var latestEdition: Edition?
     @State private var showingPicker = false
+    @State private var selectedBoxScore: BoxScoreGame?
 
     var body: some View {
         NavigationStack {
@@ -36,13 +39,26 @@ struct MyTeamsView: View {
                                         .font(.system(.body, design: .serif))
                                 } else {
                                     ForEach(teamGames) { game in
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(game.headline)
-                                                .font(.system(.body, design: .serif))
-                                            Text(game.matchup)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
+                                        Button {
+                                            selectedBoxScore = latestBoxScores.first {
+                                                $0.away.abbrev == game.awayAbbrev
+                                                    && $0.home.abbrev == game.homeAbbrev
+                                            }
+                                        } label: {
+                                            HStack {
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Text(game.headline)
+                                                        .font(.system(.body, design: .serif))
+                                                    Text(game.matchup)
+                                                        .font(.caption)
+                                                        .foregroundStyle(.secondary)
+                                                }
+                                                Spacer()
+                                                Image(systemName: "chevron.right")
+                                                    .foregroundStyle(.tertiary)
+                                            }
                                         }
+                                        .buttonStyle(.plain)
                                     }
                                 }
                             } header: {
@@ -73,6 +89,16 @@ struct MyTeamsView: View {
             .sheet(isPresented: $showingPicker) {
                 TeamPickerView()
             }
+            .navigationDestination(item: $selectedBoxScore) { boxScore in
+                if let edition = latestEdition {
+                    GameDetailView(
+                        game: boxScore,
+                        dateLabel: edition.label,
+                        pdfURL: edition.pdfURL,
+                        pdfPage: nil
+                    )
+                }
+            }
         }
         .task {
             if feed.editions.isEmpty {
@@ -84,7 +110,9 @@ struct MyTeamsView: View {
 
     private func loadLatestGames() async {
         guard let latest = feed.editions.first else { return }
+        latestEdition = latest
         latestGames = (try? await feed.games(for: latest)) ?? []
+        latestBoxScores = (try? await feed.boxScores(for: latest)) ?? []
     }
 }
 
