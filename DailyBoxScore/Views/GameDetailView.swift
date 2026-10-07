@@ -119,7 +119,7 @@ struct GameDetailView: View {
             ForEach(0..<line.count, id: \.self) { i in
                 Text(line[i].map(String.init) ?? "–")
             }
-            Text(r.map(String.init) ?? "–").weight(.bold)
+            Text(r.map(String.init) ?? "–").fontWeight(.bold)
             Text(h.map(String.init) ?? "–")
             Text(e.map(String.init) ?? "–")
         }

@@ -35,14 +35,14 @@ struct BoxScoreGame: Codable, Identifiable, Hashable {
     }
 }
 
-struct BoxScoreTeam: Codable {
+struct BoxScoreTeam: Codable, Hashable {
     let name: String?
     let abbrev: String?
     let batting: [BoxScoreBatter]
     let pitching: [BoxScorePitcher]
 }
 
-struct BoxScoreBatter: Codable, Identifiable {
+struct BoxScoreBatter: Codable, Identifiable, Hashable {
     let name: String?
     let pos: String?
     let ab: Int?
@@ -64,7 +64,7 @@ struct BoxScoreBatter: Codable, Identifiable {
     }
 }
 
-struct BoxScorePitcher: Codable, Identifiable {
+struct BoxScorePitcher: Codable, Identifiable, Hashable {
     let name: String?
     let ip: String?
     let h: Int?
@@ -84,7 +84,7 @@ struct BoxScorePitcher: Codable, Identifiable {
     }
 }
 
-struct BoxScoreLinescore: Codable {
+struct BoxScoreLinescore: Codable, Hashable {
     let innings: [Int]
     let away: [Int?]
     let home: [Int?]
