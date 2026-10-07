@@ -10,8 +10,6 @@ struct SettingsView: View {
                 Section {
                     Text("The Daily Box Score delivers complete Major League box scores in the classic newspaper agate style, every morning.")
                         .font(.system(.body, design: .serif))
-                    LabeledContent("Data", value: "Official MLB Stats API")
-                        .font(.system(.body, design: .serif))
                     LabeledContent("Version", value: "1.0")
                         .font(.system(.body, design: .serif))
                 } header: {

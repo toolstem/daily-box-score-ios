@@ -74,7 +74,10 @@ struct GameDetailView: View {
 
     private var venueLine: String {
         var details: [String] = []
-        if let venue = game.venue, !venue.isEmpty { details.append(venue) }
+        if let venue = game.venue?.trimmingCharacters(in: .init(charactersIn: ". ")),
+           !venue.isEmpty {
+            details.append(venue)
+        }
         if let att = game.att?.trimmingCharacters(in: .init(charactersIn: ". ")), !att.isEmpty {
             details.append("Att: \(att)")
         }

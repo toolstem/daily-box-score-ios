@@ -90,7 +90,7 @@ struct EditionsListView: View {
             .pickerStyle(.wheel)
             .frame(maxWidth: .infinity)
         }
-        .frame(height: 140)
+        .frame(height: 110)
     }
 
     var body: some View {
@@ -117,10 +117,26 @@ struct EditionsListView: View {
                         Section {
                             NameplateView()
                         }
+                        if let latest = feed.editions.first {
+                            Section {
+                                NavigationLink(destination: EditionDetailView(edition: latest)) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(latest.label)
+                                            .font(.system(.headline, design: .serif))
+                                        Text("\(latest.games) games")
+                                            .font(.system(.subheadline, design: .serif))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                            } header: {
+                                SectionHeading(text: "Latest Edition")
+                            }
+                        }
                         Section {
                             yearMonthPicker
                         } header: {
-                            SectionHeading(text: "Browse by Month")
+                            SectionHeading(text: "Browse By Dates")
                         }
                         Section {
                             ForEach(filteredEditions) { edition in

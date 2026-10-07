@@ -38,7 +38,7 @@ struct NameplateView: View {
                 .multilineTextAlignment(.center)
             ThinRule()
             ThinRule()
-            Text("Complete Major League box scores, in the classic agate style.")
+            Text("Complete MLB Box Scores")
                 .font(.system(.subheadline, design: .serif).italic())
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
