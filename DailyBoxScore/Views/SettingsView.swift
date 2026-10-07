@@ -8,7 +8,7 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("The Daily Box Score delivers complete Major League box scores in the classic newspaper agate style, every morning.")
+                    Text("The Daily Box Score delivers complete Major League box scores in the classic newspaper style, every morning.")
                         .font(.system(.body, design: .serif))
                     LabeledContent("Version", value: "1.0")
                         .font(.system(.body, design: .serif))
