@@ -1,0 +1,6 @@
+# macOS
+.DS_Store
+
+# Xcode user-specific files (signing, run destinations, window state)
+*.xcworkspace/
+xcuserdata/
