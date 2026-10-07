@@ -62,41 +62,35 @@ struct EditionsListView: View {
         return feed.editions.filter { $0.date.hasPrefix(prefix) }
     }
 
-    /// Year strip + month strip for jumping through the archive.
+    /// Wheel pickers for year and month.
     @ViewBuilder
     private var yearMonthPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(years, id: \.self) { y in
-                        Button("\(y)") {
-                            selectedYear = y
-                            // Keep the month if it exists in the new year, else pick the latest.
-                            let ms = months(for: y)
-                            if let m = selectedMonth, ms.contains(m) {
-                                // keep
-                            } else {
-                                selectedMonth = ms.last
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(selectedYear == y ? .accentColor : .secondary)
-                    }
+        HStack(spacing: 0) {
+            Picker("Year", selection: $selectedYear) {
+                ForEach(years, id: \.self) { y in
+                    Text("\(y)").tag(Optional(y))
                 }
             }
-            if let y = selectedYear {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(months(for: y), id: \.self) { m in
-                            Button(monthSymbols[m - 1]) { selectedMonth = m }
-                                .buttonStyle(.bordered)
-                                .tint(selectedMonth == m ? .accentColor : .secondary)
-                        }
-                    }
+            .pickerStyle(.wheel)
+            .frame(maxWidth: .infinity)
+            .onChange(of: selectedYear) { _, newYear in
+                guard let y = newYear else { return }
+                let ms = months(for: y)
+                if let m = selectedMonth, ms.contains(m) {
+                    // keep the month
+                } else {
+                    selectedMonth = ms.last
                 }
             }
+            Picker("Month", selection: $selectedMonth) {
+                ForEach(months(for: selectedYear ?? 0), id: \.self) { m in
+                    Text(monthSymbols[m - 1]).tag(Optional(m))
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(maxWidth: .infinity)
         }
-        .padding(.vertical, 4)
+        .frame(height: 140)
     }
 
     var body: some View {
