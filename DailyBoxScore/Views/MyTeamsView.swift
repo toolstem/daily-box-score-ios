@@ -135,6 +135,7 @@ struct TeamPickerView: View {
                             Image(systemName: "checkmark")
                         }
                     }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
