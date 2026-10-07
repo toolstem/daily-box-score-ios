@@ -8,7 +8,7 @@ struct BoxScoreGame: Codable, Identifiable, Hashable {
     let home: BoxScoreTeam
     let linescore: BoxScoreLinescore
     let venue: String?
-    let att: Int?
+    let att: String?
     let series: String?
     let winner: String?
     let loser: String?
