@@ -68,7 +68,7 @@ struct EditionsListView: View {
         HStack(spacing: 0) {
             Picker("Year", selection: $selectedYear) {
                 ForEach(years, id: \.self) { y in
-                    Text("\(y)").tag(Optional(y))
+                    Text(y, format: .number.grouping(.never)).tag(Optional(y))
                 }
             }
             .pickerStyle(.wheel)
