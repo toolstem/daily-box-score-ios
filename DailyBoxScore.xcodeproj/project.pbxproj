@@ -55,8 +55,6 @@ E302123B7000BFE42530F72E = {isa = PBXFileReference; lastKnownFileType = sourceco
 			buildActionMask = 2147483647;
 			files = (
 			);
-				221829FB876E020A4FC512F5,
-				EF1F5EE9835DD33FC86B3584,
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -201,6 +199,8 @@ BE4D581A3C47422A9DD0419B = {
 				4D260CD6FE8344328F0BAA3E,
 				B05B078CC1654AA8BE6F9A0E,
 				C7D2E4A1B3C5D6E7F8090A1B,
+				221829FB876E020A4FC512F5,
+				EF1F5EE9835DD33FC86B3584,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
