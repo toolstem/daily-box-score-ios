@@ -47,8 +47,25 @@ class FeedService: ObservableObject {
         let url = URL(
             string: "https://www.toolstem.com/daily-box-score/feed/boxscore_\(date).json"
         )!
+        return try await cachedBoxScores(forDate: date, from: url)
+    }
+
+    /// Box scores cached on-device (like PDFs) so the native game view
+    /// works offline after the first load.
+    private func cachedBoxScores(forDate date: String, from url: URL) async throws -> [BoxScoreGame] {
+        let dir = FileManager.default.urls(
+            for: .cachesDirectory, in: .userDomainMask
+        )[0]
+        let dest = dir.appendingPathComponent("boxscore_\(date).json")
+        if FileManager.default.fileExists(atPath: dest.path) {
+            let data = try Data(contentsOf: dest)
+            return try JSONDecoder().decode([BoxScoreGame].self, from: data)
+        }
         let (data, _) = try await URLSession.shared.data(from: url)
-        return try JSONDecoder().decode([BoxScoreGame].self, from: data)
+        // Validate before caching so a bad download isn't stored.
+        let scores = try JSONDecoder().decode([BoxScoreGame].self, from: data)
+        try? data.write(to: dest, options: .atomic)
+        return scores
     }
 
     /// Loads the per-team season logs (cached after the first load).

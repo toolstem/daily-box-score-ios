@@ -59,7 +59,11 @@ struct EditionsListView: View {
     private var filteredEditions: [Edition] {
         guard let y = selectedYear, let m = selectedMonth else { return feed.editions }
         let prefix = String(format: "%d-%02d", y, m)
-        return feed.editions.filter { $0.date.hasPrefix(prefix) }
+        // The latest edition already has its own section at the top; don't repeat it.
+        let latestDate = feed.editions.first?.date
+        return feed.editions.filter {
+            $0.date.hasPrefix(prefix) && $0.date != latestDate
+        }
     }
 
     /// Wheel pickers for year and month.
