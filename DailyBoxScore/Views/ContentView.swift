@@ -26,16 +26,8 @@ struct ContentView: View {
 struct EditionsListView: View {
     @EnvironmentObject var feed: FeedService
 
-    @State private var jumpDate = Date()
-    @State private var jumpedEdition: Edition?
     @State private var selectedYear: Int?
     @State private var selectedMonth: Int?
-
-    private var dateFormatter: DateFormatter {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        return fmt
-    }
 
     /// Years with editions, newest first.
     private var years: [Int] {
@@ -165,41 +157,17 @@ struct EditionsListView: View {
                 }
             }
             .navigationTitle("Box Scores")
-            .toolbar {
-                if let range = feed.editionDateRange {
-                    ToolbarItem(placement: .primaryAction) {
-                        DatePicker(
-                            "Jump to a date",
-                            selection: $jumpDate,
-                            in: range,
-                            displayedComponents: .date
-                        )
-                        .labelsHidden()
-                        .onChange(of: jumpDate) { _, newDate in
-                            let ds = dateFormatter.string(from: newDate)
-                            jumpedEdition = feed.editions.first {
-                                $0.date == ds
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationDestination(item: $jumpedEdition) { edition in
-                EditionDetailView(edition: edition)
-            }
         }
         .task {
             if feed.editions.isEmpty {
                 await feed.load()
             }
-            if let latest = feed.editions.first,
-               let d = dateFormatter.date(from: latest.date) {
-                jumpDate = d
-                let cal = Calendar.current
-                let y = cal.component(.year, from: d)
-                let m = cal.component(.month, from: d)
-                selectedYear = y
-                selectedMonth = m
+            if let latest = feed.editions.first {
+                let parts = latest.date.split(separator: "-").compactMap { Int($0) }
+                if parts.count >= 2 {
+                    selectedYear = parts[0]
+                    selectedMonth = parts[1]
+                }
             }
         }
     }

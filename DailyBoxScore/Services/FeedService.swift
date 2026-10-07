@@ -87,16 +87,6 @@ class FeedService: ObservableObject {
         teamEntries.first { $0.abbrev == abbrev }
     }
 
-    /// The span of dates covered by the editions feed, for the date picker.
-    var editionDateRange: ClosedRange<Date>? {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        guard let first = editions.last.flatMap({ fmt.date(from: $0.date) }),
-              let last = editions.first.flatMap({ fmt.date(from: $0.date) })
-        else { return nil }
-        return first...last
-    }
-
     /// Returns a local file URL for a PDF, downloading it first if needed.
     func localPDF(for filename: String, from pdfURL: URL) async throws -> URL {
         let dir = FileManager.default.urls(
