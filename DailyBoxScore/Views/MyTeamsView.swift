@@ -92,7 +92,9 @@ struct MyTeamsView: View {
                         }
                     }
                     .refreshable {
-                        await loadLatestGames()
+                        if let edition = selectedEdition {
+                            await loadGames(for: edition)
+                        }
                     }
                 }
             }
