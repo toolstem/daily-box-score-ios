@@ -10,6 +10,7 @@ struct BoxScoreGame: Codable, Identifiable, Hashable {
     let venue: String?
     let att: String?
     let series: String?
+    let seriesStatus: String?
     let winner: String?
     let loser: String?
     let save: String?
@@ -32,6 +33,7 @@ struct BoxScoreGame: Codable, Identifiable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case pk, away, home, linescore, venue, att, series, winner, loser, save
+        case seriesStatus = "series_status"
     }
 }
 

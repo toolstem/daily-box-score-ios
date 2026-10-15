@@ -56,7 +56,11 @@ struct GameDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(game.headline)
                 .font(.system(.title2, design: .serif).weight(.bold))
-            if let series = game.series, !series.isEmpty, series != "Regular Season" {
+            if let status = game.seriesStatus, !status.isEmpty {
+                Text(status)
+                    .font(.system(.subheadline, design: .serif).italic())
+                    .foregroundStyle(.secondary)
+            } else if let series = game.series, !series.isEmpty, series != "Regular Season" {
                 Text(series)
                     .font(.system(.subheadline, design: .serif).italic())
                     .foregroundStyle(.secondary)
