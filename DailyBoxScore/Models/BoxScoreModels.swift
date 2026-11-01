@@ -9,11 +9,17 @@ struct BoxScoreGame: Codable, Identifiable, Hashable {
     let linescore: BoxScoreLinescore
     let venue: String?
     let att: String?
+    let gameTime: String?
+    let firstPitch: String?
     let series: String?
     let seriesStatus: String?
     let winner: String?
     let loser: String?
     let save: String?
+    let winnerRecord: String?
+    let loserRecord: String?
+    let saveNumber: Int?
+    let notes: BoxScoreGameNotes?
 
     var id: Int { pk }
 
@@ -32,8 +38,54 @@ struct BoxScoreGame: Codable, Identifiable, Hashable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case pk, away, home, linescore, venue, att, series, winner, loser, save
+        case pk, away, home, linescore, venue, att, series, winner, loser, save, notes
+        case gameTime = "game_time"
+        case firstPitch = "first_pitch"
         case seriesStatus = "series_status"
+        case winnerRecord = "winner_record"
+        case loserRecord = "loser_record"
+        case saveNumber = "save_number"
+    }
+}
+
+/// Game notes from the paper: hit by pitch, batters faced, inherited
+/// runners, umpires, weather, wind. All optional; a missing line is
+/// simply not shown.
+struct BoxScoreGameNotes: Codable, Hashable {
+    let hbp: String?
+    let battersFaced: String?
+    let inheritedRunners: String?
+    let umpires: String?
+    let weather: String?
+    let wind: String?
+
+    enum CodingKeys: String, CodingKey {
+        case hbp, umpires, weather, wind
+        case battersFaced = "batters_faced"
+        case inheritedRunners = "inherited_runners"
+    }
+}
+
+/// Team totals for one table. Batting uses AB/R/H/RBI/BB/SO/2B/3B/HR;
+/// pitching uses IP/H/R/ER/BB/SO/HR. All optional so older cached
+/// editions without totals still decode.
+struct BoxScoreTotals: Codable, Hashable {
+    let ip: String?
+    let ab: Int?
+    let r: Int?
+    let h: Int?
+    let rbi: Int?
+    let bb: Int?
+    let so: Int?
+    let doubles: Int?
+    let triples: Int?
+    let hr: Int?
+    let er: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case ip = "IP", ab = "AB", r = "R", h = "H", rbi = "RBI"
+        case bb = "BB", so = "SO", hr = "HR", er = "ER"
+        case doubles = "2B", triples = "3B"
     }
 }
 
@@ -42,6 +94,23 @@ struct BoxScoreTeam: Codable, Hashable {
     let abbrev: String?
     let batting: [BoxScoreBatter]
     let pitching: [BoxScorePitcher]
+    let battingTotals: BoxScoreTotals?
+    let pitchingTotals: BoxScoreTotals?
+    /// Substitute footnotes, as [letter, note text] pairs, e.g. ["a",
+    /// "Grounded out for Williamson in the 7th."]. Letters match the paper.
+    let footnotes: [[String]]?
+    /// Detail lines under the batting table, as [title, text] pairs,
+    /// e.g. ["2B", "Turang (4, Rasmussen); ..."].
+    let battingNotes: [[String]]?
+    let fieldingNotes: [[String]]?
+
+    enum CodingKeys: String, CodingKey {
+        case name, abbrev, batting, pitching, footnotes
+        case battingTotals = "batting_totals"
+        case pitchingTotals = "pitching_totals"
+        case battingNotes = "batting_notes"
+        case fieldingNotes = "fielding_notes"
+    }
 }
 
 struct BoxScoreBatter: Codable, Identifiable, Hashable {
@@ -56,13 +125,18 @@ struct BoxScoreBatter: Codable, Identifiable, Hashable {
     let doubles: Int?
     let triples: Int?
     let hr: Int?
+    let substitute: Bool?
+    /// Footnote letter from the paper (a/b/c), matching the team's
+    /// footnotes list. Nil for starters and unlettered substitutes.
+    let subLetter: String?
 
     var id: String { "\(name ?? "?")-\(pos ?? "?")" }
 
     enum CodingKeys: String, CodingKey {
-        case name, pos
+        case name, pos, substitute
         case ab = "AB", r = "R", h = "H", rbi = "RBI", bb = "BB", so = "SO"
         case doubles = "2B", triples = "3B", hr = "HR"
+        case subLetter = "sub_letter"
     }
 }
 
@@ -76,11 +150,13 @@ struct BoxScorePitcher: Codable, Identifiable, Hashable {
     let so: Int?
     let hr: Int?
     let decision: String?
+    /// Pitches-strikes, e.g. "86-58". Nil when the data has no pitch counts.
+    let ps: String?
 
     var id: String { name ?? UUID().uuidString }
 
     enum CodingKeys: String, CodingKey {
-        case name
+        case name, ps
         case ip = "IP", h = "H", r = "R", er = "ER", bb = "BB", so = "SO", hr = "HR"
         case decision
     }
@@ -96,9 +172,12 @@ struct BoxScoreLinescore: Codable, Hashable {
     let hH: Int?
     let aE: Int?
     let hE: Int?
+    let aLob: Int?
+    let hLob: Int?
 
     enum CodingKeys: String, CodingKey {
         case innings, away, home
         case aR = "a_r", hR = "h_r", aH = "a_h", hH = "h_h", aE = "a_e", hE = "h_e"
+        case aLob = "a_lob", hLob = "h_lob"
     }
 }
