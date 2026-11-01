@@ -17,13 +17,13 @@ struct DailyBoxScoreApp: App {
                     // The reminder toggle in Settings also manages this;
                     // this keeps the default ON state scheduled from first launch.
                     // It is a one-shot alarm, and the schedule check below
-                    // cancels it when no games are scheduled today.
+                    // replaces it with reminders for the mornings after
+                    // game days.
                     if UserDefaults.standard.object(forKey: "dailyReminderEnabled") == nil {
                         NotificationManager.shared.scheduleDailyReminder()
                     }
                     Task {
-                        let hasGamesToday = await feed.gamesScheduledToday()
-                        NotificationManager.shared.updateReminder(hasGamesToday: hasGamesToday)
+                        await NotificationManager.shared.refreshReminders(using: feed)
                     }
                     Task {
                         await store.loadProducts()

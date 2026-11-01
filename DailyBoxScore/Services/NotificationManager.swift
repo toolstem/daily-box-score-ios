@@ -3,19 +3,17 @@ import UserNotifications
 
 /// The daily morning reminder.
 ///
-/// It fires only when there is actually a new edition to announce.
-/// Each time the app opens it checks today's MLB schedule: if games are
-/// scheduled today, tomorrow morning has an edition, so it puts one
-/// reminder on the calendar for the chosen time. If no games are
-/// scheduled (an off day, or the offseason), it cancels any pending
-/// reminder. The reminder is a one-shot alarm, never a repeating one,
-/// so it stops on its own after the season ends instead of firing
-/// every morning all winter.
+/// It fires every morning after a game day, at the time the user picks,
+/// whether or not the app was opened the day before. Whenever the app
+/// opens it fetches a week of MLB schedule and puts one reminder on the
+/// calendar for each morning after a game day, so the reminders keep
+/// coming for days after the last time the app was opened. Mornings
+/// with no game the day before get no reminder. The reminders are
+/// one-shot alarms, never a repeating one, so nothing fires in the
+/// offseason once the last scheduled morning has passed.
 class NotificationManager {
     static let shared = NotificationManager()
     private init() {}
-
-    private let requestID = "daily-box-score"
 
     static let enabledKey = "dailyReminderEnabled"
     static let hourKey = "dailyReminderHour"
@@ -40,6 +38,14 @@ class NotificationManager {
         ) { _, _ in }
     }
 
+    private func reminderContent() -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = "Yesterday's box scores are ready"
+        content.body = "Every game from yesterday, with the full box score."
+        content.sound = .default
+        return content
+    }
+
     /// The next occurrence of the chosen time: today if it is still
     /// ahead, otherwise tomorrow.
     private func nextFireDate(hour: Int, minute: Int) -> DateComponents {
@@ -59,7 +65,9 @@ class NotificationManager {
     }
 
     /// Puts one reminder on the calendar for the next occurrence of the
-    /// chosen time. Replaces any pending reminder with the same ID.
+    /// chosen time. Used on first launch and when the toggle is switched
+    /// on, so a new user gets a reminder even before the first schedule
+    /// check runs. The next check replaces it with the game-day batch.
     func scheduleDailyReminder(hour: Int? = nil, minute: Int? = nil) {
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: nextFireDate(
@@ -68,60 +76,62 @@ class NotificationManager {
             repeats: false
         )
         let request = UNNotificationRequest(
-            identifier: requestID, content: reminderContent(), trigger: trigger
+            identifier: "daily-box-score-next",
+            content: reminderContent(), trigger: trigger
         )
         UNUserNotificationCenter.current().add(request)
     }
 
-    /// Puts one reminder on the calendar for tomorrow morning at the
-    /// chosen time. Used after the schedule check: the reminder announces
-    /// tomorrow's edition, never today's, so opening the app before the
-    /// chosen time can never produce a same-day false alarm on a day
-    /// that follows an off day.
-    func scheduleTomorrowReminder() {
+    /// Puts reminders on the calendar for the mornings after the given
+    /// game dates, at the chosen time. Mornings that have already passed
+    /// are skipped. Replaces all pending reminders first, so a re-check
+    /// never leaves stale or duplicate reminders behind. The app only
+    /// ever schedules these reminders, so removing all pending requests
+    /// touches nothing else.
+    func scheduleReminders(afterGameDates gameDates: Set<String>) {
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        guard reminderEnabled else { return }
         let calendar = Calendar.current
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date()
-        var components = calendar.dateComponents([.year, .month, .day], from: tomorrow)
-        components.hour = reminderHour
-        components.minute = reminderMinute
-        let trigger = UNCalendarNotificationTrigger(
-            dateMatching: components, repeats: false
-        )
-        let request = UNNotificationRequest(
-            identifier: requestID, content: reminderContent(), trigger: trigger
-        )
-        UNUserNotificationCenter.current().add(request)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        let now = Date()
+        for gameDate in gameDates {
+            guard let day = formatter.date(from: gameDate),
+                  let morning = calendar.date(byAdding: .day, value: 1, to: day) else { continue }
+            var components = calendar.dateComponents([.year, .month, .day], from: morning)
+            components.hour = reminderHour
+            components.minute = reminderMinute
+            guard let fireDate = calendar.date(from: components),
+                  fireDate > now else { continue }
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: components, repeats: false
+            )
+            let request = UNNotificationRequest(
+                identifier: "daily-box-score-\(formatter.string(from: morning))",
+                content: reminderContent(), trigger: trigger
+            )
+            UNUserNotificationCenter.current().add(request)
+        }
     }
 
-    private func reminderContent() -> UNMutableNotificationContent {
-        let content = UNMutableNotificationContent()
-        content.title = "Yesterday's box scores are ready"
-        content.body = "Every game from yesterday, with the full box score."
-        content.sound = .default
-        return content
-    }
-
+    /// Removes all pending reminders.
     func cancelDailyReminder() {
-        UNUserNotificationCenter.current()
-            .removePendingNotificationRequests(withIdentifiers: [requestID])
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
 
-    /// Call after checking today's MLB schedule.
-    /// - hasGamesToday: true when games are scheduled today (so tomorrow
-    ///   has an edition), false when none, nil when the check failed.
-    ///   A failed check leaves the pending reminder alone; never cancel
-    ///   on a network error.
-    func updateReminder(hasGamesToday: Bool?) {
-        guard reminderEnabled else {
-            cancelDailyReminder()
-            return
-        }
-        guard let hasGames = hasGamesToday else { return }
-        if hasGames {
-            scheduleTomorrowReminder()
-        } else {
-            cancelDailyReminder()
-        }
+    /// Fetches the MLB schedule from yesterday through six days ahead
+    /// and refreshes the reminders for the mornings after game days.
+    /// A failed check leaves the pending reminders alone; never cancel
+    /// on a network error.
+    func refreshReminders(using feed: FeedService) async {
+        let calendar = Calendar.current
+        let now = Date()
+        let start = calendar.date(byAdding: .day, value: -1, to: now) ?? now
+        let end = calendar.date(byAdding: .day, value: 6, to: now) ?? now
+        guard let gameDates = await feed.gameDates(from: start, to: end) else { return }
+        scheduleReminders(afterGameDates: gameDates)
     }
 
     func setDailyReminder(enabled: Bool) {

@@ -35,13 +35,12 @@ struct SettingsView: View {
         return formatter.string(from: reminderTime.wrappedValue)
     }
 
-    /// Re-checks today's MLB schedule and schedules the reminder for
-    /// the chosen time only when games are scheduled today, so tomorrow
-    /// has an edition. Cancels it when there are no games today.
+    /// Re-checks the MLB schedule for the coming week and puts reminders
+    /// on the calendar for the mornings after game days, at the chosen
+    /// time. Mornings with no game the day before get no reminder.
     private func refreshReminder() {
         Task {
-            let hasGames = await feed.gamesScheduledToday()
-            NotificationManager.shared.updateReminder(hasGamesToday: hasGames)
+            await NotificationManager.shared.refreshReminders(using: feed)
         }
     }
 

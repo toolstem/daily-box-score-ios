@@ -32,29 +32,31 @@ class FeedService: ObservableObject {
         }
     }
 
-    /// Whether MLB has games scheduled today (user's local date).
-    /// The morning reminder is for tomorrow's edition, which exists
-    /// only when games are played today, so the app checks this each
-    /// time it opens and schedules or cancels the reminder accordingly.
-    /// Returns nil when the schedule can't be checked; callers must not
-    /// cancel a pending reminder on nil, only on a confirmed false.
-    func gamesScheduledToday() async -> Bool? {
+    /// Dates (YYYY-MM-DD, user's local calendar) in the given range that
+    /// have MLB games scheduled. A morning's reminder exists only when
+    /// games were played the day before, so the app fetches a week of
+    /// schedule at a time and puts a reminder on the calendar for each
+    /// morning after a game day. Returns nil when the schedule can't be
+    /// checked; callers must not cancel pending reminders on nil, only
+    /// on a confirmed empty set.
+    func gameDates(from start: Date, to end: Date) async -> Set<String>? {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = .current
         formatter.dateFormat = "yyyy-MM-dd"
-        let today = formatter.string(from: Date())
+        let startString = formatter.string(from: start)
+        let endString = formatter.string(from: end)
         guard let url = URL(
-            string: "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=\(today)"
+            string: "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=\(startString)&endDate=\(endString)"
         ) else { return nil }
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
             guard let http = response as? HTTPURLResponse,
                   http.statusCode == 200 else { return nil }
             let schedule = try JSONDecoder().decode(
-                ScheduleResponse.self, from: data
+                ScheduleRangeResponse.self, from: data
             )
-            return schedule.totalGames > 0
+            return Set(schedule.dates.filter { $0.totalGames > 0 }.map { $0.date })
         } catch {
             return nil
         }
@@ -148,7 +150,12 @@ class FeedService: ObservableObject {
 }
 
 /// One day of the official MLB schedule, as returned by statsapi.mlb.com.
-/// Only the game count is used: it decides whether tomorrow has an edition.
-private struct ScheduleResponse: Decodable {
+private struct ScheduleDay: Decodable {
+    let date: String        // "2026-10-26"
     let totalGames: Int
+}
+
+/// A range of schedule days, as returned by statsapi.mlb.com.
+private struct ScheduleRangeResponse: Decodable {
+    let dates: [ScheduleDay]
 }

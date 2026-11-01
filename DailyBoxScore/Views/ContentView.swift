@@ -162,11 +162,10 @@ struct EditionsListView: View {
             if feed.editions.isEmpty {
                 await feed.load()
             }
-            // Each time the app opens, check today's MLB schedule and
-            // keep tomorrow's reminder only when games are scheduled
-            // today. A failed check leaves the reminder alone.
-            let hasGamesToday = await feed.gamesScheduledToday()
-            NotificationManager.shared.updateReminder(hasGamesToday: hasGamesToday)
+            // Each time the app opens, fetch a week of MLB schedule and
+            // keep reminders on the calendar for the mornings after game
+            // days. A failed check leaves the reminders alone.
+            await NotificationManager.shared.refreshReminders(using: feed)
             if let latest = feed.editions.first {
                 let parts = latest.date.split(separator: "-").compactMap { Int($0) }
                 if parts.count >= 2 {
