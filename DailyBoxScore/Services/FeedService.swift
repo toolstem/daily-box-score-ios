@@ -32,6 +32,34 @@ class FeedService: ObservableObject {
         }
     }
 
+    /// Whether MLB has games scheduled today (user's local date).
+    /// The morning reminder is for tomorrow's edition, which exists
+    /// only when games are played today, so the app checks this each
+    /// time it opens and schedules or cancels the reminder accordingly.
+    /// Returns nil when the schedule can't be checked; callers must not
+    /// cancel a pending reminder on nil, only on a confirmed false.
+    func gamesScheduledToday() async -> Bool? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        let today = formatter.string(from: Date())
+        guard let url = URL(
+            string: "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=\(today)"
+        ) else { return nil }
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard let http = response as? HTTPURLResponse,
+                  http.statusCode == 200 else { return nil }
+            let schedule = try JSONDecoder().decode(
+                ScheduleResponse.self, from: data
+            )
+            return schedule.totalGames > 0
+        } catch {
+            return nil
+        }
+    }
+
     func games(for edition: Edition) async throws -> [GameEntry] {
         let (data, _) = try await URLSession.shared.data(from: edition.gamesURL)
         return try JSONDecoder().decode([GameEntry].self, from: data)
@@ -117,4 +145,10 @@ class FeedService: ObservableObject {
         try await localPDF(
             for: game.pdfURL.lastPathComponent, from: game.pdfURL)
     }
+}
+
+/// One day of the official MLB schedule, as returned by statsapi.mlb.com.
+/// Only the game count is used: it decides whether tomorrow has an edition.
+private struct ScheduleResponse: Decodable {
+    let totalGames: Int
 }
