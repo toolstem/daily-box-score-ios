@@ -219,7 +219,7 @@ struct GameDetailView: View {
     private func tableNotes(_ notes: [[String]]?) -> some View {
         if let notes, !notes.isEmpty {
             VStack(alignment: .leading, spacing: 2) {
-                ForEach(notes, id: \.self) { note in
+                ForEach(Array(notes.enumerated()), id: \.offset) { _, note in
                     if note.count >= 2 {
                         (Text("\(note[0])—").fontWeight(.bold) + Text(note[1]))
                             .font(.system(.caption, design: .serif))
