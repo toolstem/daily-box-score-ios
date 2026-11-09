@@ -81,21 +81,47 @@ class FeedService: ObservableObject {
     }
 
     /// Box scores cached on-device (like PDFs) so the native game view
-    /// works offline after the first load.
+    /// works offline after the first load. A cached file from 1.0.1 has
+    /// no batting or pitching totals, so it is stale: refetch it instead
+    /// of showing the old trimmed box score forever.
     private func cachedBoxScores(forDate date: String, from url: URL) async throws -> [BoxScoreGame] {
         let dir = FileManager.default.urls(
             for: .cachesDirectory, in: .userDomainMask
         )[0]
         let dest = dir.appendingPathComponent("boxscore_\(date).json")
-        if FileManager.default.fileExists(atPath: dest.path) {
-            let data = try Data(contentsOf: dest)
-            return try JSONDecoder().decode([BoxScoreGame].self, from: data)
+        var cached: [BoxScoreGame]?
+        if FileManager.default.fileExists(atPath: dest.path),
+           let data = try? Data(contentsOf: dest),
+           let decoded = try? JSONDecoder().decode([BoxScoreGame].self, from: data) {
+            if isCompleteBoxScores(decoded) {
+                return decoded
+            }
+            cached = decoded
         }
-        let (data, _) = try await URLSession.shared.data(from: url)
-        // Validate before caching so a bad download isn't stored.
-        let scores = try JSONDecoder().decode([BoxScoreGame].self, from: data)
-        try? data.write(to: dest, options: .atomic)
-        return scores
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                if let cached { return cached }
+                throw URLError(.badServerResponse)
+            }
+            // Validate before caching so a bad download isn't stored.
+            let scores = try JSONDecoder().decode([BoxScoreGame].self, from: data)
+            try? data.write(to: dest, options: .atomic)
+            return scores
+        } catch {
+            if let cached { return cached }
+            throw error
+        }
+    }
+
+    /// True when every game carries the complete box score: batting and
+    /// pitching totals for both teams. The 1.0.1 feed had no totals at
+    /// all, so a cached file without them is from the old format.
+    private func isCompleteBoxScores(_ scores: [BoxScoreGame]) -> Bool {
+        !scores.isEmpty && scores.allSatisfy { game in
+            game.away.battingTotals != nil && game.away.pitchingTotals != nil
+                && game.home.battingTotals != nil && game.home.pitchingTotals != nil
+        }
     }
 
     /// Loads the per-team season logs (cached after the first load).
