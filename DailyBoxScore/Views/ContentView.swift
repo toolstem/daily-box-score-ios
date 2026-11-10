@@ -15,6 +15,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("My Teams", systemImage: "star")
                 }
+            GlossaryView()
+                .tabItem {
+                    Label("Glossary", systemImage: "book")
+                }
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gear")
