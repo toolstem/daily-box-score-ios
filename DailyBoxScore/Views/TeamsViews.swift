@@ -2,8 +2,9 @@ import SwiftUI
 
 /// All 30 clubs grouped by league and division, with favorites pinned to
 /// the top. The standard Teams tab: one tab, no separate My Teams tab.
-/// A star on every row toggles the favorite; tapping a row opens the
-/// team's games list.
+/// A star on every row toggles the favorite; tapping a favorite row
+/// opens that team's game on the picked date, or the season log when
+/// it did not play.
 struct TeamsListView: View {
     @EnvironmentObject var feed: FeedService
     @EnvironmentObject var favorites: FavoritesStore
@@ -16,6 +17,7 @@ struct TeamsListView: View {
     @State private var displayBoxScores: [BoxScoreGame] = []
     @State private var selectedGameEntry: GameEntry?
     @State private var selectedBoxScore: BoxScoreGame?
+    @State private var selectedTeamDetail: MLBTeam?
     @State private var isLoadingGames = false
 
     private var favoriteTeams: [MLBTeam] { favorites.favoriteTeams }
@@ -57,24 +59,10 @@ struct TeamsListView: View {
                                 }
                                 .buttonStyle(.plain)
                                 ForEach(favoriteTeams) { team in
-                                    teamRow(team)
+                                    favoriteRow(team)
                                 }
                             } header: {
                                 SectionHeading(text: "Favorites")
-                            }
-                            Section {
-                                if isLoadingGames {
-                                    ProgressView()
-                                } else {
-                                    ForEach(favoriteTeams) { team in
-                                        favoriteGameRow(team)
-                                    }
-                                }
-                            } header: {
-                                SectionHeading(
-                                    text: selectedEdition.map { "Games on \($0.shortLabel)" }
-                                        ?? "Games"
-                                )
                             }
                         }
                         ForEach(MLBTeam.standingsGroups, id: \.title) { group in
@@ -113,6 +101,9 @@ struct TeamsListView: View {
                     pdfPage: selectedGameEntry?.page
                 )
             }
+            .navigationDestination(item: $selectedTeamDetail) { team in
+                TeamDetailView(abbrev: team.abbrev)
+            }
         }
         .task {
             await feed.loadTeams()
@@ -129,8 +120,8 @@ struct TeamsListView: View {
     }
 
     /// The edition's games and native box scores for the Favorites
-    /// per-date list. A failed fetch leaves an empty list, so every
-    /// favorite shows "No game on this date" rather than stale games.
+    /// rows. A failed fetch leaves an empty list, so every favorite
+    /// shows "No game" rather than stale games.
     private func loadGames(for edition: Edition) async {
         isLoadingGames = true
         defer { isLoadingGames = false }
@@ -138,52 +129,95 @@ struct TeamsListView: View {
         displayBoxScores = (try? await feed.boxScores(for: edition)) ?? []
     }
 
-    /// One favorite's game on the selected edition date, or "No game on
-    /// this date" when the club did not play. Tapping a game opens the
-    /// native box score.
+    /// One favorite row: team name, season record, star toggle, and the
+    /// team's game on the selected edition date. Tapping opens that
+    /// game's box score; with no game that day it opens the season log.
     @ViewBuilder
-    private func favoriteGameRow(_ team: MLBTeam) -> some View {
-        let teamGames = displayGames.filter { $0.involves(abbrev: team.abbrev) }
-        if teamGames.isEmpty {
-            HStack {
-                Text(team.abbrev)
-                    .font(.system(.body, design: .serif).weight(.bold))
-                    .frame(width: 44, alignment: .leading)
-                Text("No game on this date.")
-                    .font(.system(.body, design: .serif))
-                    .foregroundStyle(.secondary)
+    private func favoriteRow(_ team: MLBTeam) -> some View {
+        Button {
+            if let game = displayGames.first(where: { $0.involves(abbrev: team.abbrev) }) {
+                selectedGameEntry = game
+                selectedBoxScore = displayBoxScores.first {
+                    $0.away.abbrev == game.awayAbbrev
+                        && $0.home.abbrev == game.homeAbbrev
+                }
+                // No native box score for this game; fall back to the log.
+                if selectedBoxScore == nil {
+                    selectedTeamDetail = team
+                }
+            } else if !isLoadingGames {
+                selectedTeamDetail = team
+            }
+            // While the edition's games are still loading and none are
+            // shown yet, a tap does nothing.
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(team.abbrev)
+                        .font(.system(.body, design: .serif).weight(.bold))
+                        .frame(width: 44, alignment: .leading)
+                    Text(team.fullName)
+                        .font(.system(.body, design: .serif))
+                    Spacer()
+                    if let record = feed.team(abbrev: team.abbrev)?.record {
+                        Text(record)
+                            .font(.system(.caption, design: .serif))
+                            .foregroundStyle(.secondary)
+                    }
+                    Button {
+                        favorites.toggle(team)
+                    } label: {
+                        Image(systemName: favorites.isFavorite(team) ? "star.fill" : "star")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(
+                        favorites.isFavorite(team)
+                            ? "Remove \(team.fullName) from favorites"
+                            : "Add \(team.fullName) to favorites"
+                    )
+                }
+                ForEach(gameLines(for: team), id: \.self) { line in
+                    HStack {
+                        Color.clear.frame(width: 44)
+                        Text(line)
+                            .font(.system(.body, design: .serif))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                }
             }
             .padding(.vertical, 4)
-        } else {
-            ForEach(teamGames) { game in
-                Button {
-                    selectedGameEntry = game
-                    selectedBoxScore = displayBoxScores.first {
-                        $0.away.abbrev == game.awayAbbrev
-                            && $0.home.abbrev == game.homeAbbrev
-                    }
-                } label: {
-                    HStack {
-                        Text(team.abbrev)
-                            .font(.system(.body, design: .serif).weight(.bold))
-                            .frame(width: 44, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(game.headline)
-                                .font(.system(.body, design: .serif))
-                            Text(game.matchup)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.tertiary)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .padding(.vertical, 4)
-            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+    }
+
+    /// One favorite's games on the selected edition date, from that
+    /// team's perspective, e.g. "vs Dodgers, W 5-3". "No game" when the
+    /// club did not play; "Loading…" while the edition's games load.
+    private func gameLines(for team: MLBTeam) -> [String] {
+        if isLoadingGames && displayGames.isEmpty {
+            return ["Loading…"]
+        }
+        let lines = displayGames
+            .filter { $0.involves(abbrev: team.abbrev) }
+            .map { game -> String in
+                let isAway = game.awayAbbrev == team.abbrev
+                let oppName = isAway
+                    ? (game.homeTeam ?? game.homeAbbrev ?? "?")
+                    : (game.awayTeam ?? game.awayAbbrev ?? "?")
+                let ha = isAway ? "at" : "vs"
+                let scored = isAway ? game.awayScore : game.homeScore
+                let allowed = isAway ? game.homeScore : game.awayScore
+                if let s = scored, let a = allowed {
+                    let result = s > a ? "W" : (s < a ? "L" : "T")
+                    return "\(ha) \(oppName), \(result) \(s)-\(a)"
+                }
+                return "\(ha) \(oppName)"
+            }
+        return lines.isEmpty ? ["No game"] : lines
     }
 
     private func teamRow(_ team: MLBTeam) -> some View {
