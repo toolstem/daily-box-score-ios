@@ -17,7 +17,6 @@ F3B1193D30D347F39643967D = {isa = PBXBuildFile; fileRef = 5D5A3A4032F642DD87FCA9
 F4A07A0397D944EE8679B597 = {isa = PBXBuildFile; fileRef = A36E209188FF4FC2A3843F49; };
 E212B722C97040C8ABD984FD = {isa = PBXBuildFile; fileRef = 13E99A513FE0462BAD7AF601; };
 4F188CAFFEFA4CF18D8BD424 = {isa = PBXBuildFile; fileRef = 16C8D9DE43BE490BAA8F7314; };
-729F843014984956B0FEC50A = {isa = PBXBuildFile; fileRef = 5A10206061E745DC852A9241; };
 4D260CD6FE8344328F0BAA3E = {isa = PBXBuildFile; fileRef = 110D01EC1F5D4762AEA8A87A; };
 B05B078CC1654AA8BE6F9A0E = {isa = PBXBuildFile; fileRef = 8F434FD6D16747B9BA586123; };
 F3504FF6815D49299CA31DBE = {isa = PBXBuildFile; fileRef = 16EE5B43A20B4FDBA064EDBB; };
@@ -39,7 +38,6 @@ D727172DD57E4ACA937D6EEF = {isa = PBXFileReference; lastKnownFileType = sourceco
 A36E209188FF4FC2A3843F49 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ContentView.swift; sourceTree = "<group>"; };
 13E99A513FE0462BAD7AF601 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/EditionDetailView.swift; sourceTree = "<group>"; };
 16C8D9DE43BE490BAA8F7314 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/PDFReaderView.swift; sourceTree = "<group>"; };
-5A10206061E745DC852A9241 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MyTeamsView.swift; sourceTree = "<group>"; };
 110D01EC1F5D4762AEA8A87A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/SettingsView.swift; sourceTree = "<group>"; };
 D8E3F5B2C4D6E7F8091A2B3C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/TeamsViews.swift; sourceTree = "<group>"; };
 8F434FD6D16747B9BA586123 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/VintageTheme.swift; sourceTree = "<group>"; };
@@ -108,7 +106,6 @@ BE4D581A3C47422A9DD0419B = {
 				A36E209188FF4FC2A3843F49,
 				13E99A513FE0462BAD7AF601,
 				16C8D9DE43BE490BAA8F7314,
-				5A10206061E745DC852A9241,
 				110D01EC1F5D4762AEA8A87A,
 				8F434FD6D16747B9BA586123,
 				D8E3F5B2C4D6E7F8091A2B3C,
@@ -198,7 +195,6 @@ BE4D581A3C47422A9DD0419B = {
 				F4A07A0397D944EE8679B597,
 				E212B722C97040C8ABD984FD,
 				4F188CAFFEFA4CF18D8BD424,
-				729F843014984956B0FEC50A,
 				4D260CD6FE8344328F0BAA3E,
 				B05B078CC1654AA8BE6F9A0E,
 				C7D2E4A1B3C5D6E7F8090A1B,

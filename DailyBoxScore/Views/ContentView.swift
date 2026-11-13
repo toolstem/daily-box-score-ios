@@ -9,11 +9,7 @@ struct ContentView: View {
                 }
             TeamsListView()
                 .tabItem {
-                    Label("Teams", systemImage: "sportscourt")
-                }
-            MyTeamsView()
-                .tabItem {
-                    Label("My Teams", systemImage: "star")
+                    Label("Teams", systemImage: "baseball")
                 }
             GlossaryView()
                 .tabItem {

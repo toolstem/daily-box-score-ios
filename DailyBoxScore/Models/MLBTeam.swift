@@ -11,6 +11,24 @@ struct MLBTeam: Identifiable, Codable, Hashable {
     var id: String { abbrev }
     var fullName: String { "\(city) \(name)" }
 
+    /// League/division groupings in display order. The single source of
+    /// truth for the Teams tab's standings layout, and the pattern for
+    /// the other sports' Teams tabs.
+    static let standingsGroups: [StandingsGroup] = [
+        StandingsGroup(league: "AL", division: "East",
+                       abbrevs: ["BAL", "BOS", "NYY", "TB", "TOR"]),
+        StandingsGroup(league: "AL", division: "Central",
+                       abbrevs: ["CWS", "CLE", "DET", "KC", "MIN"]),
+        StandingsGroup(league: "AL", division: "West",
+                       abbrevs: ["HOU", "LAA", "ATH", "SEA", "TEX"]),
+        StandingsGroup(league: "NL", division: "East",
+                       abbrevs: ["ATL", "MIA", "NYM", "PHI", "WSH"]),
+        StandingsGroup(league: "NL", division: "Central",
+                       abbrevs: ["CHC", "CIN", "MIL", "PIT", "STL"]),
+        StandingsGroup(league: "NL", division: "West",
+                       abbrevs: ["AZ", "COL", "LAD", "SD", "SF"]),
+    ]
+
     static func team(abbrev: String) -> MLBTeam? {
         all.first { $0.abbrev == abbrev }
     }
@@ -47,4 +65,20 @@ struct MLBTeam: Identifiable, Codable, Hashable {
         MLBTeam(abbrev: "TOR", city: "Toronto", name: "Blue Jays"),
         MLBTeam(abbrev: "WSH", city: "Washington", name: "Nationals"),
     ].sorted { $0.fullName < $1.fullName }
+}
+
+/// One league/division grouping for the Teams tab.
+struct StandingsGroup {
+    let league: String
+    let division: String
+    let abbrevs: [String]
+
+    /// The clubs in this group, in alphabetical order.
+    var teams: [MLBTeam] {
+        abbrevs.compactMap(MLBTeam.team(abbrev:))
+            .sorted { $0.fullName < $1.fullName }
+    }
+
+    /// Section heading, e.g. "AL East".
+    var title: String { "\(league) \(division)" }
 }

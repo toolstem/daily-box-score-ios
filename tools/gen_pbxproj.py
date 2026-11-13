@@ -17,7 +17,6 @@ SOURCES = [
     "Views/ContentView.swift",
     "Views/EditionDetailView.swift",
     "Views/PDFReaderView.swift",
-    "Views/MyTeamsView.swift",
     "Views/SettingsView.swift",
     "Views/VintageTheme.swift",
 ]
