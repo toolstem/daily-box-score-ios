@@ -97,7 +97,7 @@ struct TeamsListView: View {
                 GameDetailView(
                     game: boxScore,
                     dateLabel: selectedEdition?.label ?? "",
-                    pdfURL: selectedEdition?.pdfURL,
+                    pdfRemoteURL: selectedEdition?.pdfURL,
                     pdfPage: selectedGameEntry?.page
                 )
             }
@@ -340,7 +340,7 @@ struct TeamDetailView: View {
             GameDetailView(
                 game: boxScore,
                 dateLabel: selectedDateLabel,
-                pdfURL: selectedPdfURL,
+                pdfRemoteURL: selectedPdfURL,
                 pdfPage: selectedPdfPage
             )
         }

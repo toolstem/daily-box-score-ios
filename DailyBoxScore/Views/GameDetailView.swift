@@ -7,10 +7,18 @@ import SwiftUI
 struct GameDetailView: View {
     let game: BoxScoreGame
     let dateLabel: String
-    let pdfURL: URL?
+    /// Remote full-edition PDF URL from the feed. It is never opened
+    /// directly; tapping the button resolves it through the validated
+    /// cache download in FeedService first.
+    let pdfRemoteURL: URL?
     let pdfPage: Int?
 
+    @EnvironmentObject private var feed: FeedService
+
     @State private var showingPDF = false
+    @State private var cachedPDFURL: URL?
+    @State private var isLoadingPDF = false
+    @State private var pdfError: String?
 
     var body: some View {
         ScrollView {
@@ -34,10 +42,19 @@ struct GameDetailView: View {
                     ThinRule()
                     gameNotesSection
                 }
-                if pdfURL != nil {
+                if pdfRemoteURL != nil {
                     ThinRule()
-                    Button("View Full Edition (PDF)") { showingPDF = true }
-                        .font(.system(.body, design: .serif))
+                    Button {
+                        openPDF()
+                    } label: {
+                        if isLoadingPDF {
+                            ProgressView()
+                        } else {
+                            Text("View Full Edition (PDF)")
+                        }
+                    }
+                    .font(.system(.body, design: .serif))
+                    .disabled(isLoadingPDF)
                 }
             }
             .padding()
@@ -45,12 +62,38 @@ struct GameDetailView: View {
         .navigationTitle(game.headline)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingPDF) {
-            if let pdfURL {
+            if let cachedPDFURL {
                 NavigationStack {
-                    PDFReaderScreen(url: pdfURL, page: pdfPage ?? 1)
+                    PDFReaderScreen(url: cachedPDFURL, page: pdfPage ?? 1)
                         .navigationTitle("Full Edition")
                         .navigationBarTitleDisplayMode(.inline)
                 }
+            }
+        }
+        .alert("Couldn't open the PDF", isPresented: Binding(
+            get: { pdfError != nil },
+            set: { if !$0 { pdfError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(pdfError ?? "Please try again.")
+        }
+    }
+
+    /// The full-edition PDF goes through the same validated cache
+    /// download as the edition list, never straight to the remote URL.
+    private func openPDF() {
+        guard let pdfRemoteURL else { return }
+        Task {
+            isLoadingPDF = true
+            defer { isLoadingPDF = false }
+            do {
+                cachedPDFURL = try await feed.localPDF(
+                    for: pdfRemoteURL.lastPathComponent, from: pdfRemoteURL)
+                pdfError = nil
+                showingPDF = true
+            } catch {
+                pdfError = "The edition couldn't be downloaded. Check your connection and try again."
             }
         }
     }

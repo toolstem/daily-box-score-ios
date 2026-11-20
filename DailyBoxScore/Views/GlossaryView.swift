@@ -10,7 +10,7 @@ struct GlossaryView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Every abbreviation in the box scores, in plain words. The box score itself stays as printed; tap here when a letter does not make sense yet.")
+                    Text("New to box scores? Here's what all the abbreviations mean.")
                         .font(.system(.subheadline, design: .serif))
                         .foregroundStyle(.secondary)
                 }

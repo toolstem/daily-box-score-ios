@@ -98,7 +98,7 @@ struct EditionDetailView: View {
             GameDetailView(
                 game: boxScore,
                 dateLabel: edition.label,
-                pdfURL: edition.pdfURL,
+                pdfRemoteURL: edition.pdfURL,
                 pdfPage: pageFor(boxScore)
             )
         }
