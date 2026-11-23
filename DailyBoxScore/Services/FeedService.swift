@@ -224,7 +224,7 @@ class FeedService: ObservableObject {
         guard Self.isValidDateString(edition.date) else {
             throw URLError(.unsupportedURL)
         }
-        try await localPDF(
+        return try await localPDF(
             for: "boxscores_\(edition.date).pdf", from: edition.pdfURL)
     }
 
