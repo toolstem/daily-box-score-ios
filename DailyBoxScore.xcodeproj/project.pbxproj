@@ -24,6 +24,7 @@ C7D2E4A1B3C5D6E7F8090A1B = {isa = PBXBuildFile; fileRef = D8E3F5B2C4D6E7F8091A2B
 221829FB876E020A4FC512F5 = {isa = PBXBuildFile; fileRef = E302123B7000BFE42530F72E; };
 EF1F5EE9835DD33FC86B3584 = {isa = PBXBuildFile; fileRef = 2640B349E1D8158494E1CBFA; };
 2CC38EE40ED3F221C1E6EC32 = {isa = PBXBuildFile; fileRef = 263050CDBAFA3FEE09FFFE91; };
+B541B80D0526EE65790619EF = {isa = PBXBuildFile; fileRef = E0DA535D7BA9BFAC82BCEBB7; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,7 @@ D8E3F5B2C4D6E7F8091A2B3C = {isa = PBXFileReference; lastKnownFileType = sourceco
 E302123B7000BFE42530F72E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BoxScoreModels.swift; sourceTree = "<group>"; };
 2640B349E1D8158494E1CBFA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/GameDetailView.swift; sourceTree = "<group>"; };
 263050CDBAFA3FEE09FFFE91 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/GlossaryView.swift; sourceTree = "<group>"; };
+E0DA535D7BA9BFAC82BCEBB7 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/StandingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -111,6 +113,7 @@ BE4D581A3C47422A9DD0419B = {
 				D8E3F5B2C4D6E7F8091A2B3C,
 				2640B349E1D8158494E1CBFA,
 				263050CDBAFA3FEE09FFFE91,
+				E0DA535D7BA9BFAC82BCEBB7,
 			);
 			name = Views; sourceTree = "<group>";
 		};
@@ -201,6 +204,7 @@ BE4D581A3C47422A9DD0419B = {
 				221829FB876E020A4FC512F5,
 				EF1F5EE9835DD33FC86B3584,
 				2CC38EE40ED3F221C1E6EC32,
+				B541B80D0526EE65790619EF,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

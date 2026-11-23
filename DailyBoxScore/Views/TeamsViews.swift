@@ -5,6 +5,7 @@ import SwiftUI
 /// A star on every row toggles the favorite. Favorite rows match the
 /// football app: abbreviation, full name, and season W-L record only.
 /// Tapping any row, favorite or not, opens that team's season log.
+/// A Standings row at the top opens the division tables, like football.
 struct TeamsListView: View {
     @EnvironmentObject var feed: FeedService
     @EnvironmentObject var favorites: FavoritesStore
@@ -32,6 +33,18 @@ struct TeamsListView: View {
                     .padding()
                 } else {
                     List {
+                        Section {
+                            NavigationLink(destination: StandingsView()) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Standings")
+                                        .font(.system(.headline, design: .serif))
+                                    Text(StandingsView.throughLabel(feed: feed))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
                         if !favoriteTeams.isEmpty {
                             Section {
                                 ForEach(favoriteTeams) { team in
