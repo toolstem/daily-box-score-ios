@@ -36,7 +36,9 @@ struct MLBTeam: Identifiable, Codable, Hashable {
     /// Older team codes in the archive feed, mapped to today's club.
     /// Retrosheet codes cover 1901-2000 (e.g. BRO and LAN are the Dodgers,
     /// SLA and MLA are today's Orioles, WS1 is today's Twins, WS2 is today's
-    /// Rangers, BLA is filed under the Yankees by Retrosheet). The MLB codes
+    /// Rangers). BLA, the 1901-02 Baltimore Orioles, is left out on
+    /// purpose: it is a defunct franchise with no club today (the feed
+    /// marks it franchise "BLA"), so it gets no "today" line. The MLB codes
     /// FLA, LA, MON, OAK and ANA appear in 2001 to 2024 editions. Each code
     /// belongs to exactly one franchise, so the mapping is unambiguous.
     static let legacyCodes: [String: String] = [
@@ -51,7 +53,7 @@ struct MLBTeam: Identifiable, Codable, Hashable {
         "FLO": "MIA", "FLA": "MIA",
         "SE1": "MIL",
         "WS1": "MIN",
-        "BLA": "NYY", "NYA": "NYY",
+        "NYA": "NYY",
         "NYN": "NYM",
         "PHA": "ATH", "KC1": "ATH", "OAK": "ATH",
         "SDN": "SD", "SDP": "SD",
@@ -78,7 +80,7 @@ struct MLBTeam: Identifiable, Codable, Hashable {
         "LAD": ["Superbas", "Robins"],
         "MIL": ["Pilots"],
         "MIN": ["Senators", "Nationals"],
-        "NYY": ["Orioles", "Highlanders", "Hilltoppers"],
+        "NYY": ["Highlanders", "Hilltoppers"],
         "PHI": ["Blue Jays"],
         "TB": ["Devil Rays"],
         "TEX": ["Senators"],
@@ -93,13 +95,15 @@ struct MLBTeam: Identifiable, Codable, Hashable {
     ]
 
     /// Today's club for a team as it appears in a feed. The feed's own
-    /// franchise link wins when present. Otherwise the team code is used,
+    /// franchise link wins when present; a franchise that is not a club
+    /// today (BLA, the defunct 1901-02 Orioles) means no club, never a
+    /// guess from the code. Otherwise the team code is used,
     /// directly if it is a current code or through legacyCodes, but only
     /// when the nickname fits that club, so an exhibition team that
     /// shares a code is never matched.
     static func today(code: String?, franchise: String?, nickname: String? = nil) -> MLBTeam? {
-        if let franchise, let club = team(abbrev: franchise) {
-            return club
+        if let franchise, !franchise.isEmpty {
+            return team(abbrev: franchise)
         }
         guard let code else { return nil }
         var found = team(abbrev: code)
