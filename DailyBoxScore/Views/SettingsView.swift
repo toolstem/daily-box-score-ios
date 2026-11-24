@@ -57,15 +57,22 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Morning reminder", isOn: $reminderEnabled)
-                        .font(.system(.body, design: .serif))
-                        .onChange(of: reminderEnabled) { _, newValue in
-                            if newValue {
-                                refreshReminder()
-                            } else {
-                                NotificationManager.shared.cancelDailyReminder()
-                            }
+                    Toggle(isOn: $reminderEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Daily Reminder")
+                                .font(.system(.body, design: .serif))
+                            Text("Get updated box scores sent to your phone daily.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                    }
+                    .onChange(of: reminderEnabled) { _, newValue in
+                        if newValue {
+                            refreshReminder()
+                        } else {
+                            NotificationManager.shared.cancelDailyReminder()
+                        }
+                    }
                     if reminderEnabled {
                         DatePicker(
                             "Reminder time",
@@ -79,10 +86,11 @@ struct SettingsView: View {
                         .onChange(of: reminderMinute) { _, _ in
                             refreshReminder()
                         }
+                        // Shown only while the reminder is on.
+                        Text("A notification at \(reminderTimeText) when there's a new edition.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    Text("A notification at \(reminderTimeText) when there's a new edition.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 } header: {
                     SectionHeading(text: "Notifications")
                 }
