@@ -44,13 +44,26 @@ struct SettingsView: View {
         }
     }
 
+    /// The marketing version from the app bundle, e.g. "1.0.4".
+    private var appVersion: String {
+        let info = Bundle.main.infoDictionary
+        return info?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    Text("The Daily Box Score delivers complete Major League box scores in the classic newspaper style, every morning.")
-                        .font(.system(.body, design: .serif))
-                    LabeledContent("Version", value: "1.0")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("The Daily Box Score delivers complete Major League box scores in the classic newspaper style, every morning.")
+                            .font(.system(.body, design: .serif))
+                        // Retrosheet's required notice, shown once here
+                        // rather than on every box score.
+                        Text("Box scores from 1901 through 2000 are compiled from Retrosheet. The information used here was obtained free of charge from and is copyrighted by Retrosheet. Interested parties may contact Retrosheet at www.retrosheet.org.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("Version", value: appVersion)
                         .font(.system(.body, design: .serif))
                 } header: {
                     SectionHeading(text: "About")

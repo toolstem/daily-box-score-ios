@@ -103,9 +103,12 @@ struct BoxScoreTeam: Codable, Hashable {
     /// e.g. ["2B", "Turang (4, Rasmussen); ..."].
     let battingNotes: [[String]]?
     let fieldingNotes: [[String]]?
+    /// Today's club (e.g. "LAD" for Brooklyn). Archive editions only;
+    /// optional so every older feed still decodes.
+    let franchise: String?
 
     enum CodingKeys: String, CodingKey {
-        case name, abbrev, batting, pitching, footnotes
+        case name, abbrev, batting, pitching, footnotes, franchise
         case battingTotals = "batting_totals"
         case pitchingTotals = "pitching_totals"
         case battingNotes = "batting_notes"

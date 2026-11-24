@@ -112,13 +112,33 @@ struct GameEntry: Codable, Identifiable {
     let awayScore: Int?
     let homeScore: Int?
     let page: Int?
+    /// Today's club for each side (e.g. "LAD" for the Brooklyn Superbas).
+    /// Only archive editions carry it; older feeds simply leave it out.
+    let awayFranchise: String?
+    let homeFranchise: String?
 
     var id: String {
         "\(awayAbbrev ?? "A")@\(homeAbbrev ?? "H")"
     }
 
     func involves(abbrev: String) -> Bool {
-        awayAbbrev == abbrev || homeAbbrev == abbrev
+        awayToday?.abbrev == abbrev || homeToday?.abbrev == abbrev
+    }
+
+    /// Today's clubs, following moves and renames, so a favorite finds
+    /// its team in any year.
+    var awayToday: MLBTeam? { MLBTeam.today(code: awayAbbrev, franchise: awayFranchise, nickname: awayTeam) }
+    var homeToday: MLBTeam? { MLBTeam.today(code: homeAbbrev, franchise: homeFranchise, nickname: homeTeam) }
+
+    /// "Red Sox today" when the away name is an older one, else nil.
+    var awayTodayCaption: String? {
+        MLBTeam.todayCaption(code: awayAbbrev, franchise: awayFranchise,
+                             nickname: awayTeam, fullName: awayName)
+    }
+
+    var homeTodayCaption: String? {
+        MLBTeam.todayCaption(code: homeAbbrev, franchise: homeFranchise,
+                             nickname: homeTeam, fullName: homeName)
     }
 
     /// e.g. "Mets 1, Rangers 3"
@@ -143,5 +163,7 @@ struct GameEntry: Codable, Identifiable {
         case awayScore = "away_score"
         case homeScore = "home_score"
         case page
+        case awayFranchise = "away_franchise"
+        case homeFranchise = "home_franchise"
     }
 }

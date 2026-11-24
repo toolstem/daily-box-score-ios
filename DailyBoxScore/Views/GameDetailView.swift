@@ -12,8 +12,14 @@ struct GameDetailView: View {
     /// cache download in FeedService first.
     let pdfRemoteURL: URL?
     let pdfPage: Int?
+    /// Full names from the edition index, e.g. "Brooklyn Dodgers", so a
+    /// moved club still gets its "today" line. Optional: the team season
+    /// log opens current games and passes none.
+    var awayFullName: String? = nil
+    var homeFullName: String? = nil
 
     @EnvironmentObject private var feed: FeedService
+    @EnvironmentObject private var favorites: FavoritesStore
 
     @State private var showingPDF = false
     @State private var cachedPDFURL: URL?
@@ -104,6 +110,8 @@ struct GameDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(game.headline)
                 .font(.system(.title2, design: .serif).weight(.bold))
+            todayRow(team: game.away, fullName: awayFullName)
+            todayRow(team: game.home, fullName: homeFullName)
             if let status = game.seriesStatus, !status.isEmpty {
                 Text(status)
                     .font(.system(.subheadline, design: .serif).italic())
@@ -121,6 +129,26 @@ struct GameDetailView: View {
                     .font(.system(.caption, design: .serif))
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    /// "Americans: Red Sox today" under the headline when this club
+    /// played under an older name, with a star if today's club is a
+    /// favorite. Shows nothing when the name matches today's.
+    @ViewBuilder
+    private func todayRow(team: BoxScoreTeam, fullName: String?) -> some View {
+        if let caption = MLBTeam.todayCaption(code: team.abbrev, franchise: team.franchise,
+                                              nickname: team.name, fullName: fullName) {
+            HStack(spacing: 3) {
+                if let club = MLBTeam.today(code: team.abbrev, franchise: team.franchise, nickname: team.name),
+                   favorites.isFavorite(club) {
+                    Image(systemName: "star.fill")
+                        .accessibilityLabel("Favorite")
+                }
+                Text("\(team.name ?? team.abbrev ?? "Team"): \(caption)")
+            }
+            .font(.system(.caption, design: .serif))
+            .foregroundStyle(.secondary)
         }
     }
 

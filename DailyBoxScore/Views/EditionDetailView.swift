@@ -22,9 +22,11 @@ struct EditionDetailView: View {
     private var favoriteGames: [GameEntry] {
         let favs = Set(favorites.favoriteAbbrevs)
         guard !favs.isEmpty else { return [] }
+        // Match on today's club, so a starred Red Sox also finds the 1901
+        // Boston Americans and a starred Dodgers finds Brooklyn.
         return games.filter { game in
-            (game.awayAbbrev.map { favs.contains($0) } ?? false)
-                || (game.homeAbbrev.map { favs.contains($0) } ?? false)
+            (game.awayToday.map { favs.contains($0.abbrev) } ?? false)
+                || (game.homeToday.map { favs.contains($0.abbrev) } ?? false)
         }
     }
 
@@ -99,7 +101,9 @@ struct EditionDetailView: View {
                 game: boxScore,
                 dateLabel: edition.label,
                 pdfRemoteURL: edition.pdfURL,
-                pdfPage: pageFor(boxScore)
+                pdfPage: pageFor(boxScore),
+                awayFullName: entryFor(boxScore)?.awayName,
+                homeFullName: entryFor(boxScore)?.homeName
             )
         }
         .fullScreenCover(isPresented: $showingPDF) {
@@ -135,6 +139,9 @@ struct EditionDetailView: View {
                     Text(game.matchup)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if game.awayTodayCaption != nil || game.homeTodayCaption != nil {
+                        todayLine(game)
+                    }
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
@@ -142,6 +149,37 @@ struct EditionDetailView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    /// The "Red Sox today" line for an older edition: today's club for
+    /// each side whose name has changed, away first, with a star on a
+    /// favorite. Sides whose name is unchanged are left out.
+    private func todayLine(_ game: GameEntry) -> some View {
+        HStack(spacing: 6) {
+            if let caption = game.awayTodayCaption {
+                todayLabel(caption, team: game.awayToday)
+            }
+            if game.awayTodayCaption != nil && game.homeTodayCaption != nil {
+                Text("·")
+            }
+            if let caption = game.homeTodayCaption {
+                todayLabel(caption, team: game.homeToday)
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+    }
+
+    private func todayLabel(_ caption: String, team: MLBTeam?) -> some View {
+        HStack(spacing: 2) {
+            if let team, favorites.isFavorite(team) {
+                Image(systemName: "star.fill")
+                    .accessibilityLabel("Favorite")
+            }
+            Text(caption)
+        }
     }
 
     /// Match a GameEntry to its full box score by teams. The feed arrays are
@@ -156,6 +194,17 @@ struct EditionDetailView: View {
             $0.awayAbbrev == game.awayAbbrev && $0.homeAbbrev == game.homeAbbrev
         }.firstIndex(where: { $0.id == game.id }) ?? 0
         return matches[min(entryIndex, matches.count - 1)]
+    }
+
+    /// The edition index entry for a box score (same order as the feed),
+    /// used for the full era names such as "Brooklyn Dodgers".
+    private func entryFor(_ boxScore: BoxScoreGame) -> GameEntry? {
+        guard let idx = boxScores.firstIndex(where: { $0.pk == boxScore.pk }),
+              games.indices.contains(idx) else { return nil }
+        let entry = games[idx]
+        guard entry.awayAbbrev == boxScore.away.abbrev,
+              entry.homeAbbrev == boxScore.home.abbrev else { return nil }
+        return entry
     }
 
     private func pageFor(_ boxScore: BoxScoreGame) -> Int? {
