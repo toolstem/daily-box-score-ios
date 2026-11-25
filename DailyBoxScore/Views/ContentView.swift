@@ -119,7 +119,7 @@ struct EditionsListView: View {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(latest.label)
                                             .font(.system(.headline, design: .serif))
-                                        Text("\(latest.games) games")
+                                        Text("\(latest.games) \(latest.games == 1 ? "game" : "games")")
                                             .font(.system(.subheadline, design: .serif))
                                             .foregroundStyle(.secondary)
                                     }
@@ -141,7 +141,7 @@ struct EditionsListView: View {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(edition.label)
                                             .font(.system(.headline, design: .serif))
-                                        Text("\(edition.games) games")
+                                        Text("\(edition.games) \(edition.games == 1 ? "game" : "games")")
                                             .font(.system(.subheadline, design: .serif))
                                             .foregroundStyle(.secondary)
                                     }
