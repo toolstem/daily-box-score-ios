@@ -20,7 +20,7 @@ import { checkEntitlement, notificationTransaction } from './apple.js';
 import { emailSender, smsSender } from './senders.js';
 import { makeStore } from './store.js';
 import {
-  base64url, chicagoDate, daysBetween, escapeHtml, html, json,
+  base64Bytes, base64url, chicagoDate, daysBetween, escapeHtml, html, json,
   normalizeEmail, normalizeUsPhone, randomToken, sha256Hex,
 } from './util.js';
 
@@ -65,6 +65,33 @@ export async function fetchOwn(url, maxBytes, fetchFn = fetch) {
   return readCapped(res, maxBytes);
 }
 
+/** Reads only the first maxBytes of an own-host file, then stops. */
+export async function fetchOwnPrefix(url, maxBytes, fetchFn = fetch) {
+  const u = new URL(url);
+  if (u.protocol !== 'https:' || u.hostname !== ALLOWED_FETCH_HOST) throw new Error('bad_host');
+  const res = await fetchFn(u.toString(), { redirect: 'manual', cf: { cacheTtl: 0 } });
+  if (res.status !== 200) throw new Error(`status_${res.status}`);
+  const reader = res.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (total < maxBytes) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    total += value.length;
+  }
+  await reader.cancel().catch(() => {});
+  const out = new Uint8Array(Math.min(total, maxBytes));
+  let off = 0;
+  for (const c of chunks) {
+    const take = Math.min(c.length, out.length - off);
+    out.set(c.subarray(0, take), off);
+    off += take;
+    if (off >= out.length) break;
+  }
+  return out;
+}
+
 /** Delivery flags from app_config.json. Anything unreadable = off. */
 export async function remoteFlags(app, fetchFn = fetch) {
   const off = { email: false, sms: false, passMode: 'paid', mlb: 'paid' };
@@ -73,12 +100,19 @@ export async function remoteFlags(app, fetchFn = fetch) {
     const cfg = JSON.parse(new TextDecoder().decode(bytes));
     if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) return off;
     const pass = cfg.archive_pass;
-    const mode = (v) => (v === undefined ? 'paid' : ['paid', 'free', 'off'].includes(v) ? v : 'free');
+    // For delivery, anything other than exactly "paid" or "free" (any
+    // case) counts as OFF: a typo in the kill switch must stop sending.
+    const mode = (v) => {
+      if (v === undefined) return 'paid';
+      const t = typeof v === 'string' ? v.trim().toLowerCase() : '';
+      return t === 'paid' || t === 'free' ? t : 'off';
+    };
+    const isObj = pass && typeof pass === 'object' && !Array.isArray(pass);
     return {
       email: cfg.delivery?.email_enabled === true,
       sms: cfg.delivery?.sms_enabled === true,
-      passMode: pass && typeof pass === 'object' ? mode(pass.mode) : pass === undefined ? 'paid' : 'free',
-      mlb: pass && typeof pass === 'object' ? mode(pass.mlb_features) : 'paid',
+      passMode: isObj ? mode(pass.mode) : pass === undefined ? 'paid' : 'off',
+      mlb: isObj ? mode(pass.mlb_features) : pass === undefined ? 'paid' : 'off',
     };
   } catch {
     return off;
@@ -93,6 +127,12 @@ export function channelAllowed(env, app, flags, channel) {
   if (flags.passMode === 'off') return false;
   if (APPS[app].mlb && flags.mlb === 'off') return false;
   return true;
+}
+
+async function hmacHex(env, purpose, value) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.LINK_SECRET || 'unset'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${purpose}:${value}`));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function linkToken(env, purpose, id) {
@@ -171,7 +211,7 @@ export async function handleSubscribe(request, env, deps) {
   if (!/^\d{1,20}$/.test(txid)) return json({ error: 'bad_transaction' }, 400);
 
   const ip = request.headers.get('cf-connecting-ip') || 'none';
-  if (!(await store.allow(`ip:${await sha256Hex(ip)}`, 20, HOUR, now))) return json({ error: 'slow_down' }, 429);
+  if (!(await store.allow(`ip:${await hmacHex(env, 'ip', ip)}`, 20, HOUR, now))) return json({ error: 'slow_down' }, 429);
   if (!(await store.allow(`tx:${app}:${txid}`, 5, HOUR, now))) return json({ error: 'slow_down' }, 429);
 
   const flags = await remoteFlags(app, fetchFn);
@@ -185,9 +225,6 @@ export async function handleSubscribe(request, env, deps) {
     if (!channelAllowed(env, app, flags, 'sms')) return json({ error: 'sms_off' }, 403);
     if (body.smsConsent !== true || !SMS_CONSENT[body.smsConsentVersion]) return json({ error: 'sms_consent_required' }, 400);
   }
-  if (email && (await store.isSuppressed(await sha256Hex(email)))) return json({ error: 'email_blocked' }, 422);
-  if (phone && (await store.isSuppressed(await sha256Hex(phone)))) return json({ error: 'phone_opted_out' }, 422);
-
   let ent;
   try {
     ent = await checkEntitlement(env, app, txid, fetchFn, now);
@@ -195,32 +232,56 @@ export async function handleSubscribe(request, env, deps) {
     return json({ error: 'apple_unavailable' }, 503);
   }
   if (!ent || !ent.active) return json({ error: 'no_active_pass' }, 403);
+  // Only after the pass is proven, so strangers cannot probe the list.
+  if (email && (await store.isSuppressed(await sha256Hex(email)))) return json({ error: 'email_blocked' }, 422);
+  if (phone && (await store.isSuppressed(await sha256Hex(phone)))) return json({ error: 'phone_opted_out' }, 422);
 
-  const manageToken = randomToken();
-  const manageHash = await sha256Hex(manageToken);
   let row = await store.byTransaction(app, ent.originalTransactionId);
+  // Who may change this row:
+  // - the app holding the current manage token: anything;
+  // - anyone with the pass, when the row has no confirmed address yet;
+  // - otherwise (row set up, token lost, e.g. a new phone): only a new
+  //   email, and the new token only starts working once that email is
+  //   confirmed. No phone changes, no status, no delete until then.
+  const presented = typeof body.manageToken === 'string' && body.manageToken.length <= 100 ? await sha256Hex(body.manageToken) : null;
+  const holdsToken = !!row && !!presented && presented === row.manage_hash;
+  const setUp = !!row && (!!row.email_confirmed_at || !!row.sms_confirmed_at);
+  const recovering = setUp && !holdsToken;
+  if (recovering && phone) return json({ error: 'manage_token_required' }, 403);
+  const changesEmail = !!email && (!row || email !== row.email || !!row.email_unsubscribed_at);
+  if (recovering && !changesEmail) return json({ error: 'manage_token_required' }, 403);
+
+  const rowId = row?.id ?? crypto.randomUUID();
+  // Rate checks before anything is written, so a 429 never strands the app.
+  if (changesEmail && !(await store.allow(`confirm:${rowId}`, 3, DAY, now))) return json({ error: 'slow_down' }, 429);
+
+  const manageToken = holdsToken ? body.manageToken : randomToken();
+  const manageHash = await sha256Hex(manageToken);
   const entFields = {
     product_id: ent.productId,
     entitlement: 'active',
     entitlement_expires_at: ent.expiresAt,
     entitlement_checked_at: now,
-    manage_hash: manageHash,
     updated_at: now,
   };
   if (!row) {
-    row = { id: crypto.randomUUID(), app, original_transaction_id: ent.originalTransactionId, created_at: now, ...entFields };
+    row = { id: rowId, app, original_transaction_id: ent.originalTransactionId, created_at: now, manage_hash: manageHash, ...entFields };
     await store.insert(row);
   } else {
-    await store.update(row.id, entFields);
+    await store.update(row.id, recovering || holdsToken ? entFields : { ...entFields, manage_hash: manageHash });
   }
 
   let emailPending = false;
-  if (email && (email !== row.email || row.email_unsubscribed_at)) {
+  if (changesEmail) {
     // New address: it waits for its confirm link. The old confirmed
     // address keeps getting the paper until the new one confirms.
-    if (!(await store.allow(`confirm:${row.id}`, 3, DAY, now))) return json({ error: 'slow_down' }, 429);
     const token = randomToken();
-    await store.update(row.id, { pending_email: email, pending_hash: await sha256Hex(token), pending_expires_at: now + CONFIRM_TTL });
+    await store.update(row.id, {
+      pending_email: email,
+      pending_hash: await sha256Hex(token),
+      pending_expires_at: now + CONFIRM_TTL,
+      pending_manage_hash: recovering ? manageHash : null,
+    });
     const link = `${env.PUBLIC_BASE_URL}/v1/confirm?t=${token}`;
     const a = APPS[app];
     const sent = await deps.email.send({
@@ -295,6 +356,8 @@ export async function handleConfirm(request, env, { store, now, email: sender })
   if (row.entitlement !== 'active') return html('<h2>No active Archive Pass</h2><p>Email delivery comes with the Archive Pass.</p>', 403);
   const old = row.email && !row.email_unsubscribed_at && row.email !== row.pending_email ? row.email : null;
   await store.update(row.id, {
+    ...(row.pending_manage_hash ? { manage_hash: row.pending_manage_hash } : {}),
+    pending_manage_hash: null,
     email: row.pending_email,
     email_confirmed_at: now,
     email_unsubscribed_at: null,
@@ -351,6 +414,8 @@ export async function handleAppleNotification(request, env, { store, now, fetchF
   if (!n) return json({ ok: true }); // not ours or unreadable: nothing to do
   const row = await store.byTransaction(n.app, n.transactionId);
   if (!row) return json({ ok: true });
+  // Unsigned-checked notices could be replayed: cap Apple look-ups.
+  if (!(await store.allow(`notif:${row.id}`, 10, HOUR, now))) return json({ ok: true });
   // Never trust the notification itself: ask Apple.
   let ent;
   try {
@@ -377,9 +442,10 @@ export async function smsKeyword(store, phone, text, now) {
     return 'You are unsubscribed and will get no more texts. Reply START to resubscribe.';
   }
   if (['HELP', 'INFO'].includes(word)) {
-    return 'Box Score papers by text. Up to 1 msg per game day. Msg and data rates may apply. Reply STOP to cancel. Help: toolstem.com';
+    return 'OM Collective box score papers by text. Up to 1 msg per game day. Msg and data rates may apply. Reply STOP to cancel. Help: toolstem.com';
   }
   if (['START', 'UNSTOP', 'YES'].includes(word)) {
+    await store.unsuppress(await sha256Hex(phone));
     return 'Thanks. Turn texts on again in the app to restart delivery.';
   }
   return null;
@@ -421,6 +487,7 @@ export async function runDaily(env, deps) {
   }
   for (const r of await store.expiredForDeletion(now - RETENTION_AFTER_LAPSE, 50)) await store.deleteSubscriber(r.id);
   await store.pruneRateLimits(now - 2 * DAY);
+  await store.clearExpiredPending(now);
 
   for (const app of Object.keys(APPS)) {
     report.push(await sendEmailForApp(env, deps, app));
@@ -428,10 +495,15 @@ export async function runDaily(env, deps) {
   return report;
 }
 
-async function newestPaperDate(app, fetchFn) {
-  const bytes = await fetchOwn(APPS[app].editionsUrl, 2 * 1024 * 1024, fetchFn);
-  const feed = JSON.parse(new TextDecoder().decode(bytes));
-  const dates = (feed.editions ?? []).map((e) => e?.date).filter((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d));
+/**
+ * Newest paper date. Both feeds list editions newest first, and the
+ * baseball feed is several MB (every date since 1901), so only the
+ * first 64 KB is read and the newest date found there is used.
+ */
+export async function newestPaperDate(app, fetchFn) {
+  const bytes = await fetchOwnPrefix(APPS[app].editionsUrl, 64 * 1024, fetchFn);
+  const text = new TextDecoder().decode(bytes);
+  const dates = [...text.matchAll(/"date"\s*:\s*"(\d{4}-\d{2}-\d{2})"/g)].map((m) => m[1]);
   dates.sort();
   return dates.at(-1) ?? null;
 }
@@ -484,6 +556,7 @@ export async function sendEmailForApp(env, deps, app) {
   const magic = String.fromCharCode(...pdf.subarray(0, 5));
   if (magic !== '%PDF-') return { app, skipped: 'pdf_not_pdf', date };
   const attach = pdf.length <= 2 * 1024 * 1024;
+  const attachment = attach ? { filename: APPS[app].fileName(date), bytes: pdf, b64: base64Bytes(pdf) } : undefined;
 
   const batch = await store.dueEmail(app, date, now, Number(env.SEND_BATCH || 25));
   const a = APPS[app];
@@ -491,8 +564,11 @@ export async function sendEmailForApp(env, deps, app) {
   let sent = 0;
   let failed = 0;
   for (const row of batch) {
+    // Claim first. If the run is cut off after the send, the claim is
+    // already there, so the next run never sends a second copy.
+    if (!(await store.claimDelivery(row.id, date, 'email', now))) continue;
     if (await store.isSuppressed(await sha256Hex(row.email))) {
-      await store.recordDelivery(row.id, date, 'email', 'suppressed', now);
+      await store.finishDelivery(row.id, date, 'email', 'suppressed');
       continue;
     }
     const unsub = await unsubscribeUrl(env, row.id);
@@ -503,11 +579,11 @@ export async function sendEmailForApp(env, deps, app) {
       text: `Here is the paper for ${label}.\n${attach ? 'The PDF is attached, ready to print.\n' : ''}Open it online: ${pdfUrl}${f.text}`,
       html: `<p>Here is the paper for ${escapeHtml(label)}.</p>${attach ? '<p>The PDF is attached, ready to print.</p>' : ''}<p><a href="${escapeHtml(pdfUrl)}">Open the paper</a></p>${f.html}`,
       unsubscribeUrl: unsub,
-      attachment: attach ? { filename: a.fileName(date), bytes: pdf } : undefined,
+      attachment,
     });
     // A failure is recorded and not retried: a provider error can still
     // mean the email went out, and a double send is worse than a miss.
-    await store.recordDelivery(row.id, date, 'email', res.ok ? 'sent' : 'failed', now);
+    await store.finishDelivery(row.id, date, 'email', res.ok ? 'sent' : 'failed');
     if (res.ok) sent++;
     else failed++;
   }
@@ -522,7 +598,9 @@ function deps(env) {
 }
 
 export async function route(request, env, d) {
-  const { pathname } = new URL(request.url);
+  const url = new URL(request.url);
+  if (url.protocol !== 'https:') return json({ error: 'https_only' }, 403);
+  const { pathname } = url;
   const m = request.method;
   if (m === 'POST' && pathname === '/v1/subscribe') return handleSubscribe(request, env, d);
   if (m === 'POST' && pathname === '/v1/status') return handleStatus(request, env, d);

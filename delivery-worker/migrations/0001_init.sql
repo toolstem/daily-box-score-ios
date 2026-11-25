@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS subscribers (
   sms_confirmed_at INTEGER,
   sms_opted_out_at INTEGER,
 
+  pending_manage_hash TEXT,                  -- new phone: token starts working once the new email is confirmed
   manage_hash TEXT NOT NULL,                 -- held by the app, for status and delete
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
@@ -43,7 +44,7 @@ CREATE TABLE IF NOT EXISTS deliveries (
   subscriber_id TEXT NOT NULL,
   paper_date TEXT NOT NULL,                  -- YYYY-MM-DD
   channel TEXT NOT NULL CHECK (channel IN ('email', 'sms')),
-  status TEXT NOT NULL,                      -- sent | failed
+  status TEXT NOT NULL,                      -- sending | sent | failed | suppressed
   sent_at INTEGER NOT NULL,
   PRIMARY KEY (subscriber_id, paper_date, channel)
 );

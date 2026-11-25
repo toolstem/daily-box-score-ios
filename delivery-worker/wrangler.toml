@@ -15,10 +15,12 @@ database_name = "boxscore-delivery"
 database_id = "REPLACE_AT_SETUP"
 migrations_dir = "migrations"
 
-# Every 15 minutes from 6:00 to 11:45 a.m. Central (12:00-17:45 UTC in
-# winter; the hour gate in code uses America/Chicago).
+# Every 5 minutes, 11:00-17:55 UTC (5:00-11:55 a.m. Central in winter,
+# 6:00-12:55 in summer). The code itself waits for 7 a.m. Central.
+# Needs Workers Paid ($5/month): the free plan allows only 50 database
+# queries and about 10 ms of CPU per run, too little for a send batch.
 [triggers]
-crons = ["*/15 11-17 * * *"]
+crons = ["*/5 11-17 * * *"]
 
 [vars]
 EMAIL_ENABLED = "false"          # server-side switch 1 (app_config.json is switch 2)

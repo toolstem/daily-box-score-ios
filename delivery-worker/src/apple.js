@@ -86,7 +86,11 @@ export async function checkEntitlement(env, app, transactionId, fetchFn = fetch,
       // 1 active, 4 billing grace period: still entitled.
       // 2 expired, 3 billing retry, 5 revoked: not entitled.
       const active = (last.status === 1 || last.status === 4) && !t.revocationDate;
-      best = { originalTransactionId: original, productId: t.productId ?? tx.productId, active, expiresAt: t.expiresDate ?? null };
+      // In the grace period the paid-through date is already past, so
+      // the grace end date is what keeps delivery going.
+      const renewal = last.status === 4 ? jwsPayload(last.signedRenewalInfo) ?? {} : {};
+      const expiresAt = last.status === 4 && typeof renewal.gracePeriodExpiresDate === 'number' ? renewal.gracePeriodExpiresDate : t.expiresDate ?? null;
+      best = { originalTransactionId: original, productId: t.productId ?? tx.productId, active, expiresAt };
     }
   }
   if (!best) {

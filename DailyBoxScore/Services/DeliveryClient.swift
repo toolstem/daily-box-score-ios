@@ -50,12 +50,15 @@ enum DeliveryClient {
     ) async throws -> (emailPending: Bool, smsPending: Bool) {
         var body: [String: Any] = ["app": app, "transactionId": String(transactionID)]
         if let email, !email.isEmpty { body["email"] = email }
+        // Sending the current token proves this is the same app; without
+        // it, a set-up row only accepts a new email that must confirm.
+        if let token = Keychain.get() { body["manageToken"] = token }
         if let phone, !phone.isEmpty {
             body["phone"] = phone
             body["smsConsent"] = smsConsent
             body["smsConsentVersion"] = smsConsentVersion
         }
-        let (data, http) = try await post("/v1/subscribe", body)
+        let (data, http) = try await post("v1/subscribe", body)
         let reply = try? JSONDecoder().decode(SubscribeReply.self, from: data)
         if let token = reply?.manageToken { Keychain.set(token) }
         guard http.statusCode == 200, reply?.ok == true else {
@@ -66,7 +69,7 @@ enum DeliveryClient {
 
     static func status() async -> Status? {
         guard let token = Keychain.get() else { return nil }
-        guard let result = try? await post("/v1/status", ["app": app, "manageToken": token]),
+        guard let result = try? await post("v1/status", ["app": app, "manageToken": token]),
               result.1.statusCode == 200 else { return nil }
         return try? JSONDecoder().decode(Status.self, from: result.0)
     }
@@ -74,7 +77,7 @@ enum DeliveryClient {
     /// Stop delivery and delete the address on the server.
     static func deleteEverything() async throws {
         guard let token = Keychain.get() else { return }
-        let (_, http) = try await post("/v1/delete", ["app": app, "manageToken": token])
+        let (_, http) = try await post("v1/delete", ["app": app, "manageToken": token])
         guard http.statusCode == 200 || http.statusCode == 404 else {
             throw Failure.message("Couldn't reach the server. Try again.")
         }
@@ -101,6 +104,7 @@ enum DeliveryClient {
         case "no_active_pass": return "Email delivery comes with an active Archive Pass."
         case "email_blocked": return "We can't send to that address. Try another one."
         case "phone_opted_out": return "That number replied STOP. Text START to us first."
+        case "manage_token_required": return "Enter your email again. We'll send a confirm link to finish setting up this phone."
         case "email_off", "sms_off": return "Delivery is paused right now."
         case "slow_down": return "Too many tries. Wait a bit and try again."
         default: return "Couldn't reach the server. Try again."

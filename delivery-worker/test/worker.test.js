@@ -8,7 +8,7 @@ import { logSender, buildMime, sigV4 } from '../src/senders.js';
 import { checkEntitlement, notificationTransaction } from '../src/apple.js';
 import { normalizeEmail, normalizeUsPhone, base64url, sha256Hex } from '../src/util.js';
 import {
-  route, runDaily, remoteFlags, channelAllowed, smsKeyword, fetchOwn, unsubscribeUrl,
+  route, runDaily, remoteFlags, channelAllowed, smsKeyword, fetchOwn, unsubscribeUrl, newestPaperDate,
 } from '../src/index.js';
 
 // ---------- fakes ----------
@@ -24,7 +24,7 @@ function fakeD1() {
         bind(...a) { args = a.map((v) => (v === undefined ? null : v)); return api; },
         async first() { return st.get(...args) ?? null; },
         async all() { return { results: st.all(...args) }; },
-        async run() { st.run(...args); return { success: true }; },
+        async run() { const r = st.run(...args); return { success: true, meta: { changes: Number(r.changes) } }; },
       };
       return api;
     },
@@ -348,4 +348,117 @@ test('oversized and non-object bodies are rejected', async () => {
   const { env, d } = await setup();
   assert.equal((await route(post('/v1/subscribe', '[1]'), env, d)).status, 400);
   assert.equal((await route(post('/v1/subscribe', JSON.stringify({ app: 'football', pad: 'x'.repeat(5000) })), env, d)).status, 400);
+});
+
+// ---------- review round 2 ----------
+
+async function confirmAll(env, d, tokens) {
+  for (const t of tokens.splice(0)) {
+    await route(new Request('https://delivery.toolstem.com/v1/confirm', {
+      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `t=${t}`,
+    }), env, d);
+  }
+}
+
+test('kill switch typos stop delivery (fail closed)', async () => {
+  for (const cfg of [
+    { archive_pass: { mode: 'OFF' } },
+    { archive_pass: { mode: 'disabled' } },
+    { archive_pass: 'off' },
+    { archive_pass: { mlb_features: 'Off' } },
+  ]) {
+    const f = fakeFetch({ 'https://www.toolstem.com/daily-box-score/feed/app_config.json': { ...cfg, delivery: { email_enabled: true } } });
+    const flags = await remoteFlags('baseball', f);
+    assert.equal(channelAllowed({ EMAIL_ENABLED: 'true' }, 'baseball', flags, 'email'), false, JSON.stringify(cfg));
+  }
+  const ok = fakeFetch({ 'https://www.toolstem.com/daily-box-score/feed/app_config.json': { archive_pass: { mode: 'Free' }, delivery: { email_enabled: true } } });
+  assert.equal(channelAllowed({ EMAIL_ENABLED: 'true' }, 'baseball', await remoteFlags('baseball', ok), 'email'), true);
+});
+
+test('a big newest-first feed is read from the top only', async () => {
+  const entries = [];
+  for (let i = 0; i < 20000; i++) entries.push({ date: i === 0 ? '2026-10-28' : '1950-01-01', label: 'x'.repeat(200) });
+  const big = JSON.stringify({ editions: entries });
+  assert.ok(big.length > 4 * 1024 * 1024);
+  const f = fakeFetch({ 'https://www.toolstem.com/daily-box-score/feed/editions.json': big });
+  assert.equal(await newestPaperDate('baseball', f), '2026-10-28');
+});
+
+test('someone with only the transaction ID cannot take over a set-up row', async () => {
+  const { env, d, email } = await setup();
+  const tokens = captureTokens(email);
+  const first = await (await route(post('/v1/subscribe', { app: 'football', transactionId: '2000000111', email: 'owner@example.com' }), env, d)).json();
+  await confirmAll(env, d, tokens);
+
+  // No token: status and phone changes refused, same email refused.
+  const again = await route(post('/v1/subscribe', { app: 'football', transactionId: '2000000111', email: 'owner@example.com' }), env, d);
+  assert.equal(again.status, 403);
+  // A new email is allowed, but its token is dead until that email confirms.
+  const intr = await (await route(post('/v1/subscribe', { app: 'football', transactionId: '2000000111', email: 'other@example.com' }), env, d)).json();
+  const st = await route(post('/v1/status', { app: 'football', manageToken: intr.manageToken }), env, d);
+  assert.equal(st.status, 404);
+  // The owner's token still works.
+  const own = await route(post('/v1/status', { app: 'football', manageToken: first.manageToken }), env, d);
+  assert.equal(own.status, 200);
+  // The owner keeps the same token on later saves.
+  const keep = await (await route(post('/v1/subscribe', { app: 'football', transactionId: '2000000111', email: 'owner2@example.com', manageToken: first.manageToken }), env, d)).json();
+  assert.equal(keep.manageToken, first.manageToken);
+});
+
+test('a confirm rate limit never strands the app token', async () => {
+  const { env, d, email } = await setup();
+  const tokens = captureTokens(email);
+  const first = await (await route(post('/v1/subscribe', { app: 'football', transactionId: '2000000111', email: 'a1@example.com' }), env, d)).json();
+  await confirmAll(env, d, tokens);
+  let tok = first.manageToken;
+  for (let i = 2; i <= 5; i++) {
+    const r = await route(post('/v1/subscribe', { app: 'football', transactionId: '2000000111', email: `a${i}@example.com`, manageToken: tok }), env, d);
+    const b = await r.json();
+    if (r.status === 200) tok = b.manageToken;
+  }
+  const st = await route(post('/v1/status', { app: 'football', manageToken: tok }), env, d);
+  assert.equal(st.status, 200);
+});
+
+test('a send cut off before it is recorded is never sent twice', async () => {
+  const { env, d, email } = await setup();
+  const tokens = captureTokens(email);
+  await route(post('/v1/subscribe', { app: 'football', transactionId: '2000000111', email: 'fan@example.com' }), env, d);
+  await confirmAll(env, d, tokens);
+  const orig = d.store.finishDelivery;
+  d.store.finishDelivery = async () => { throw new Error('worker killed'); };
+  await assert.rejects(runDaily(env, d));
+  d.store.finishDelivery = orig;
+  const before = email.sent.length;
+  await runDaily(env, d);
+  assert.equal(email.sent.length, before);
+});
+
+test('START lifts a STOP', async () => {
+  const store = makeStore(fakeD1());
+  await smsKeyword(store, '+15125550123', 'STOP', NOW);
+  assert.equal(await store.isSuppressed(await sha256Hex('+15125550123')), true);
+  await smsKeyword(store, '+15125550123', 'start', NOW);
+  assert.equal(await store.isSuppressed(await sha256Hex('+15125550123')), false);
+});
+
+test('billing grace period keeps delivery going', async () => {
+  const txid = '2000000222';
+  const tx = { originalTransactionId: txid, productId: 'com.omcollective.footballboxscores.archivepass.yearly', bundleId: 'com.omcollective.footballboxscores', type: 'Auto-Renewable Subscription', expiresDate: NOW - DAY };
+  const f = fakeFetch({
+    [`https://api.storekit.itunes.apple.com/inApps/v1/transactions/${txid}`]: { signedTransactionInfo: jws(tx) },
+    [`https://api.storekit.itunes.apple.com/inApps/v1/subscriptions/${txid}`]: {
+      data: [{ lastTransactions: [{ originalTransactionId: txid, status: 4, signedTransactionInfo: jws(tx), signedRenewalInfo: jws({ gracePeriodExpiresDate: NOW + 10 * DAY }) }] }],
+    },
+  });
+  const env = { APPLE_ISSUER_ID: 'i', APPLE_KEY_ID: 'k', APPLE_PRIVATE_KEY: await pem() };
+  const ent = await checkEntitlement(env, 'football', txid, f, NOW);
+  assert.equal(ent.active, true);
+  assert.equal(ent.expiresAt, NOW + 10 * DAY);
+});
+
+test('plain http is refused', async () => {
+  const { env, d } = await setup();
+  const r = await route(new Request('http://delivery.toolstem.com/v1/status', { method: 'POST', body: '{}' }), env, d);
+  assert.equal(r.status, 403);
 });

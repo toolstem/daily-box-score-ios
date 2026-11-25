@@ -112,15 +112,20 @@ final class RemoteSwitches: ObservableObject {
         guard let object = try? JSONSerialization.jsonObject(with: data),
               let root = object as? [String: Any] else { return nil }
         var v = Values()
+        // Delivery fails closed: if a kill switch value can't be read,
+        // nothing is offered for delivery (the server stops too).
+        var unclear = false
         if let pass = root["archive_pass"] as? [String: Any] {
             v.passMode = mode(pass["mode"])
             v.mlbFeatures = mode(pass["mlb_features"])
+            unclear = !known(pass["mode"]) || !known(pass["mlb_features"])
         } else if root["archive_pass"] != nil {
             // Present but not an object: never charge on it.
             v.passMode = .free
             v.mlbFeatures = .free
+            unclear = true
         }
-        if let delivery = root["delivery"] as? [String: Any] {
+        if !unclear, let delivery = root["delivery"] as? [String: Any] {
             v.emailDelivery = (delivery["email_enabled"] as? Bool) == true
             v.smsDelivery = (delivery["sms_enabled"] as? Bool) == true
         }
@@ -131,6 +136,13 @@ final class RemoteSwitches: ObservableObject {
             v.freeShareDays = min(max(days, 0), 3650)
         }
         return v
+    }
+
+    /// True when a mode value is missing or one of paid/free/off.
+    nonisolated private static func known(_ raw: Any?) -> Bool {
+        guard let raw else { return true }
+        guard let text = raw as? String else { return false }
+        return Mode(rawValue: text.lowercased()) != nil
     }
 
     /// Missing key = paid (normal). Unknown value = free (fail open for

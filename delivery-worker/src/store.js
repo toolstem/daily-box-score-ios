@@ -76,6 +76,22 @@ export function makeStore(db) {
         'INSERT OR IGNORE INTO deliveries (subscriber_id, paper_date, channel, status, sent_at) VALUES (?, ?, ?, ?, ?)',
         sid, date, channel, status, now,
       ),
+    /** Reserves one send. False if this person already has a row for this paper. */
+    async claimDelivery(sid, date, channel, now) {
+      const r = await run(
+        "INSERT OR IGNORE INTO deliveries (subscriber_id, paper_date, channel, status, sent_at) VALUES (?, ?, ?, 'sending', ?)",
+        sid, date, channel, now,
+      );
+      return (r?.meta?.changes ?? r?.changes ?? 0) > 0;
+    },
+    finishDelivery: (sid, date, channel, status) =>
+      run('UPDATE deliveries SET status = ? WHERE subscriber_id = ? AND paper_date = ? AND channel = ?', status, sid, date, channel),
+    unsuppress: (hash) => run('DELETE FROM suppressions WHERE address_hash = ?', hash),
+    clearExpiredPending: (now) =>
+      run(
+        'UPDATE subscribers SET pending_email = NULL, pending_hash = NULL, pending_expires_at = NULL, pending_manage_hash = NULL WHERE pending_expires_at IS NOT NULL AND pending_expires_at < ?',
+        now,
+      ),
 
     getRun: (app, date, channel) => one('SELECT * FROM send_runs WHERE app = ? AND paper_date = ? AND channel = ?', app, date, channel),
     lastFinishedRun: (app, channel, date) =>

@@ -50,7 +50,7 @@ export function resendSender(env, fetchFn) {
         text: msg.text,
         html: msg.html,
         headers: msg.unsubscribeUrl ? listHeaders(msg) : undefined,
-        attachments: msg.attachment ? [{ filename: msg.attachment.filename, content: b64(msg.attachment.bytes) }] : undefined,
+        attachments: msg.attachment ? [{ filename: msg.attachment.filename, content: msg.attachment.b64 ?? b64(msg.attachment.bytes) }] : undefined,
       };
       const res = await fetchFn('https://api.resend.com/emails', {
         method: 'POST',
@@ -85,7 +85,7 @@ export function buildMime(from, msg, boundarySeed = crypto.randomUUID()) {
   if (msg.attachment) {
     lines.push(`--${b1}`, `Content-Type: application/pdf; name="${msg.attachment.filename}"`,
       'Content-Transfer-Encoding: base64', `Content-Disposition: attachment; filename="${msg.attachment.filename}"`, '',
-      wrap(b64(msg.attachment.bytes)));
+      wrap(msg.attachment.b64 ?? b64(msg.attachment.bytes)));
   }
   lines.push(`--${b1}--`, '');
   return lines.join('\r\n');

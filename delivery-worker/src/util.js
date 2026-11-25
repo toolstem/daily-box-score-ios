@@ -94,3 +94,11 @@ export function chicagoDate(ms) {
 export function daysBetween(a, b) {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
 }
+
+/** Standard base64 of bytes (chunked, safe for multi-MB input). */
+export function base64Bytes(bytes) {
+  let s = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) s += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  return btoa(s);
+}
