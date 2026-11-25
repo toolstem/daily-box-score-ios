@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject var store: StoreManager
@@ -135,12 +136,101 @@ struct SettingsView: View {
                         Text("Visit the website")
                             .font(.system(.body, design: .serif))
                     }
+                    FeedbackButton(
+                        subject: "Daily Box Score feedback",
+                        messageBody: "\n\n\n----\n" + Feedback.detailsBlock
+                    ) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Send Feedback")
+                                .font(.system(.body, design: .serif))
+                            Text("Questions, ideas, or something to fix.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
             .navigationTitle("Settings")
         }
         .task {
             await store.loadProducts()
+        }
+    }
+}
+
+// MARK: - Feedback email
+
+/// Feedback and error reports go out as a pre-filled email in the
+/// user's own mail app. Nothing is sent unless they tap Send, and the
+/// app keeps no copy, so "Data Not Collected" still holds.
+enum Feedback {
+    /// The one place the feedback address lives. Change it here.
+    static let email = "feedback@toolstem.com"
+
+    /// App, iOS and device details at the bottom of every email.
+    static var detailsBlock: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? ""
+        let build = info?["CFBundleVersion"] as? String ?? ""
+        return "App: Daily Box Score \(version) (\(build))\n"
+            + "System: iOS \(UIDevice.current.systemVersion)\n"
+            + "Device: \(deviceModel)"
+    }
+
+    /// Model identifier such as "iPhone16,1".
+    static var deviceModel: String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        return withUnsafeBytes(of: &systemInfo.machine) { raw in
+            String(decoding: raw.prefix(while: { $0 != 0 }), as: UTF8.self)
+        }
+    }
+
+    /// mailto link with subject and body percent-encoded (spaces as %20).
+    static func mailtoURL(subject: String, body: String) -> URL? {
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: "&=+?#")
+        let s = subject.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
+        let b = body.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
+        return URL(string: "mailto:\(email)?subject=\(s)&body=\(b)")
+    }
+}
+
+/// A button that opens the user's mail app with the message filled in.
+/// If no mail app can take it, shows the address with a Copy button.
+struct FeedbackButton<Label: View>: View {
+    let subject: String
+    let messageBody: String
+    @ViewBuilder let label: () -> Label
+
+    @Environment(\.openURL) private var openURL
+    @State private var showingNoMail = false
+
+    var body: some View {
+        Button {
+            send()
+        } label: {
+            label()
+        }
+        .alert("No mail app found", isPresented: $showingNoMail) {
+            Button("Copy") {
+                UIPasteboard.general.string = Feedback.email
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Email us at \(Feedback.email)")
+        }
+    }
+
+    private func send() {
+        guard let url = Feedback.mailtoURL(subject: subject, body: messageBody) else {
+            showingNoMail = true
+            return
+        }
+        openURL(url) { accepted in
+            if !accepted {
+                showingNoMail = true
+            }
         }
     }
 }

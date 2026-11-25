@@ -62,6 +62,20 @@ struct GameDetailView: View {
                     .font(.system(.body, design: .serif))
                     .disabled(isLoadingPDF)
                 }
+                // Quiet grey link at the very bottom of the page.
+                FeedbackButton(
+                    subject: "Error report: \(errorReportGameLabel)",
+                    messageBody: "What looks wrong?\n\n\n\n----\n"
+                        + "Game: \(errorReportGameLabel)\n"
+                        + "Game ID: \(game.pk)\n"
+                        + Feedback.detailsBlock
+                ) {
+                    Text("Report an error")
+                        .font(.system(.caption, design: .serif))
+                        .underline()
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 4)
             }
             .padding()
         }
@@ -102,6 +116,11 @@ struct GameDetailView: View {
                 pdfError = "The edition couldn't be downloaded. Check your connection and try again."
             }
         }
+    }
+
+    /// "Boston Americans at Baltimore Orioles, Friday, April 26, 1901"
+    private var errorReportGameLabel: String {
+        "\(game.away.name ?? "Away") at \(game.home.name ?? "Home"), \(dateLabel)"
     }
 
     // MARK: - Header
