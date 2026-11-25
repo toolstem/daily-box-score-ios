@@ -37,7 +37,9 @@ struct StandingsView: View {
             }
         }
         .navigationTitle("Standings")
-        .navigationBarTitleDisplayMode(.inline)
+        // Large, left-aligned title like the Box Scores, Teams,
+        // Glossary and Settings tabs; it collapses to inline on scroll.
+        .navigationBarTitleDisplayMode(.large)
         .task {
             await feed.loadTeams()
         }
