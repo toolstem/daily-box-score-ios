@@ -51,6 +51,10 @@ final class StoreManager: ObservableObject {
     @Published private(set) var ownsPass = false
     /// Expiry of the current yearly pass; nil for lifetime or no pass.
     @Published private(set) var passExpiration: Date?
+    /// Apple's original transaction ID for the pass. Sent only to our
+    /// delivery server, and only when the user turns delivery on, so
+    /// the server can ask Apple whether the pass is active.
+    @Published private(set) var passTransactionID: UInt64?
     @Published private(set) var productsLoaded = false
     @Published private(set) var isBusy = false
     /// A short message for the user after a purchase or restore.
@@ -129,6 +133,17 @@ final class StoreManager: ObservableObject {
         return result == .hidden ? .allowed : result
     }
 
+    /// Email delivery is offered when the remote flag is on and neither
+    /// kill switch is "off" (current baseball comes from MLB data).
+    var deliveryOffered: Bool {
+        switches.emailDelivery && switches.passMode != .off && switches.mlbFeatures != .off
+    }
+
+    /// Texts: same rules, separate flag (off by default).
+    var textDeliveryOffered: Bool {
+        deliveryOffered && switches.smsDelivery
+    }
+
     /// True when the purchase screen should offer the pass for sale.
     var canSellPass: Bool {
         switches.passMode == .paid && !ownsPass
@@ -157,6 +172,7 @@ final class StoreManager: ObservableObject {
         var owns = false
         var lifetime = false
         var expiry: Date?
+        var txid: UInt64?
         for await result in Transaction.currentEntitlements {
             guard case .verified(let t) = result,
                   Self.passIDs.contains(t.productID),
@@ -170,8 +186,10 @@ final class StoreManager: ObservableObject {
                 lifetime = true
             }
             owns = true
+            txid = t.originalID
         }
         ownsPass = owns
+        passTransactionID = txid
         passExpiration = (owns && !lifetime) ? expiry : nil
     }
 

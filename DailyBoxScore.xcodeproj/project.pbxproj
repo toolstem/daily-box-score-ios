@@ -29,6 +29,8 @@ A9027D2B585841A4A1A188D5 = {isa = PBXBuildFile; fileRef = B6BC6845B25149F6979816
 90020DDDB0D44E3D800A83F5 = {isa = PBXBuildFile; fileRef = 575D6C7AE22A4C84BF1ECDD8; };
 520A3599D2BB445DA275D2A7 = {isa = PBXBuildFile; fileRef = 05F98C82957A4DCCACB38479; };
 3D7A1C2E9B4F4E61A0C5D7E1 = {isa = PBXBuildFile; fileRef = 6E2B9F4A1C3D4B58A7E0F912; };
+8A4E2C1D7F3B4A69B5C0D2E3 = {isa = PBXBuildFile; fileRef = 9B5F3D2E8A4C4B7AC6D1E3F4; };
+7C3D1B0A6E2F4958A4B9C1D2 = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F4A0B9C8D7E6F; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +59,8 @@ B6BC6845B25149F6979816F1 = {isa = PBXFileReference; lastKnownFileType = sourceco
 575D6C7AE22A4C84BF1ECDD8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ArchivePassView.swift; sourceTree = "<group>"; };
 05F98C82957A4DCCACB38479 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ArchiveFeaturesViews.swift; sourceTree = "<group>"; };
 6E2B9F4A1C3D4B58A7E0F912 = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+9B5F3D2E8A4C4B7AC6D1E3F4 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/DeliveryClient.swift; sourceTree = "<group>"; };
+1A2B3C4D5E6F4A0B9C8D7E6F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/DeliveryView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -109,6 +113,7 @@ BE4D581A3C47422A9DD0419B = {
 				5D5A3A4032F642DD87FCA9E8,
 				D727172DD57E4ACA937D6EEF,
 				B6BC6845B25149F6979816F1,
+				9B5F3D2E8A4C4B7AC6D1E3F4,
 			);
 			name = Services; sourceTree = "<group>";
 		};
@@ -126,6 +131,7 @@ BE4D581A3C47422A9DD0419B = {
 				E0DA535D7BA9BFAC82BCEBB7,
 				575D6C7AE22A4C84BF1ECDD8,
 				05F98C82957A4DCCACB38479,
+				1A2B3C4D5E6F4A0B9C8D7E6F,
 			);
 			name = Views; sourceTree = "<group>";
 		};
@@ -221,6 +227,8 @@ BE4D581A3C47422A9DD0419B = {
 				A9027D2B585841A4A1A188D5,
 				90020DDDB0D44E3D800A83F5,
 				520A3599D2BB445DA275D2A7,
+				8A4E2C1D7F3B4A69B5C0D2E3,
+				7C3D1B0A6E2F4958A4B9C1D2,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -31,10 +31,21 @@ struct ArchivePassView: View {
                 benefit("On This Day", "Every paper from today's date, back to 1901.")
                 benefit("Birthday Paper", "The box scores from the day you were born, or any day you pick.")
                 benefit("Print and Share", "Print, save or send any paper from the archive. This week's papers are always free to print.")
+                if store.deliveryOffered {
+                    benefit("The paper in your inbox", "Each new paper by email on game days, ready to print.")
+                }
                 benefit("New archive features", "Everything we add to the archive is included.")
             }
 
             statusSection
+
+            if store.ownsPass && store.deliveryOffered {
+                Section {
+                    NavigationLink("Email Delivery") { DeliveryView() }
+                } footer: {
+                    Text("Get each new paper by email. You choose the address; you can stop and delete it any time.")
+                }
+            }
 
             if store.canSellPass {
                 Section {
