@@ -6,6 +6,7 @@ struct DailyBoxScoreApp: App {
     @StateObject private var favorites = FavoritesStore()
     @StateObject private var switches: RemoteSwitches
     @StateObject private var store: StoreManager
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let switches = RemoteSwitches()
@@ -33,13 +34,21 @@ struct DailyBoxScoreApp: App {
                     Task {
                         await NotificationManager.shared.refreshReminders(using: feed)
                     }
+                    // Side by side: a slow config fetch never delays
+                    // reading what the user owns.
+                    Task { await switches.refresh() }
                     Task {
-                        // Remote switches first (kill switch), then what
-                        // the user owns, then prices for the pass screen.
-                        await switches.refresh()
                         await store.refreshEntitlements()
                         await store.loadProducts()
                     }
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    // Back in the foreground: re-read the switches and
+                    // what the user owns, so an expired or refunded
+                    // pass locks again without a relaunch.
+                    guard phase == .active else { return }
+                    Task { await switches.refresh() }
+                    Task { await store.refreshEntitlements() }
                 }
         }
     }

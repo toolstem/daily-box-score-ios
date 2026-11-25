@@ -11,7 +11,8 @@ import Foundation
 ///       "version": 1,
 ///       "archive_pass": { "mode": "paid", "mlb_features": "paid" },
 ///       "tips_enabled": true,
-///       "free_share_days": 7
+///       "free_share_days": 7,
+///       "delivery": { "email_enabled": false, "sms_enabled": false }
 ///     }
 ///
 /// mode / mlb_features:
@@ -28,6 +29,9 @@ import Foundation
 /// - Never fetched: defaults (paid, paid, tips on, 7 days).
 /// - A value this version does not recognise counts as "free": never charge
 ///   on a setting we don't understand, never lock a paying user out.
+/// - An archive_pass value that is not an object counts as "free".
+/// - Delivery flags are OFF unless exactly true (delivery needs our
+///   server, so it fails closed).
 /// - Fetch only our own https host, under 16 KB. Nothing about the user is
 ///   sent; it is a plain GET like the editions feed.
 @MainActor
@@ -41,6 +45,8 @@ final class RemoteSwitches: ObservableObject {
         var mlbFeatures: Mode = .paid
         var tipsEnabled = true
         var freeShareDays = 7
+        var emailDelivery = false
+        var smsDelivery = false
     }
 
     @Published private(set) var values: Values
@@ -49,6 +55,8 @@ final class RemoteSwitches: ObservableObject {
     var mlbFeatures: Mode { values.mlbFeatures }
     var tipsEnabled: Bool { values.tipsEnabled }
     var freeShareDays: Int { values.freeShareDays }
+    var emailDelivery: Bool { values.emailDelivery }
+    var smsDelivery: Bool { values.smsDelivery }
 
     static let configURL = URL(
         string: "https://www.toolstem.com/daily-box-score/feed/app_config.json"
@@ -73,15 +81,26 @@ final class RemoteSwitches: ObservableObject {
             timeoutInterval: 15
         )
         request.httpMethod = "GET"
-        guard let result = try? await URLSession.shared.data(for: request) else {
-            return
-        }
-        let (data, response) = result
+        // Stream the body and stop past the cap, so a huge reply can
+        // never be pulled into memory; refuse redirects off our host.
+        guard let result = try? await URLSession.shared.bytes(
+            for: request, delegate: OwnHostOnly.shared
+        ) else { return }
+        let (bytes, response) = result
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200,
               http.url?.host?.lowercased() == "www.toolstem.com",
-              data.count <= Self.maxBytes,
-              let parsed = Self.parse(data) else { return }
+              http.expectedContentLength <= Int64(Self.maxBytes) else { return }
+        var data = Data()
+        do {
+            for try await byte in bytes {
+                data.append(byte)
+                if data.count > Self.maxBytes { return }
+            }
+        } catch {
+            return
+        }
+        guard let parsed = Self.parse(data) else { return }
         values = parsed
         UserDefaults.standard.set(data, forKey: Self.cacheKey)
     }
@@ -96,6 +115,14 @@ final class RemoteSwitches: ObservableObject {
         if let pass = root["archive_pass"] as? [String: Any] {
             v.passMode = mode(pass["mode"])
             v.mlbFeatures = mode(pass["mlb_features"])
+        } else if root["archive_pass"] != nil {
+            // Present but not an object: never charge on it.
+            v.passMode = .free
+            v.mlbFeatures = .free
+        }
+        if let delivery = root["delivery"] as? [String: Any] {
+            v.emailDelivery = (delivery["email_enabled"] as? Bool) == true
+            v.smsDelivery = (delivery["sms_enabled"] as? Bool) == true
         }
         if let tips = root["tips_enabled"] as? Bool {
             v.tipsEnabled = tips
@@ -113,5 +140,22 @@ final class RemoteSwitches: ObservableObject {
         guard let text = raw as? String,
               let m = Mode(rawValue: text.lowercased()) else { return .free }
         return m
+    }
+}
+
+/// Refuses any redirect that leaves https://www.toolstem.com.
+final class OwnHostOnly: NSObject, URLSessionTaskDelegate {
+    static let shared = OwnHostOnly()
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        let ok = request.url?.scheme == "https"
+            && request.url?.host?.lowercased() == "www.toolstem.com"
+        completionHandler(ok ? request : nil)
     }
 }

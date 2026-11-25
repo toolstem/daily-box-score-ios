@@ -28,6 +28,7 @@ B541B80D0526EE65790619EF = {isa = PBXBuildFile; fileRef = E0DA535D7BA9BFAC82BCEB
 A9027D2B585841A4A1A188D5 = {isa = PBXBuildFile; fileRef = B6BC6845B25149F6979816F1; };
 90020DDDB0D44E3D800A83F5 = {isa = PBXBuildFile; fileRef = 575D6C7AE22A4C84BF1ECDD8; };
 520A3599D2BB445DA275D2A7 = {isa = PBXBuildFile; fileRef = 05F98C82957A4DCCACB38479; };
+3D7A1C2E9B4F4E61A0C5D7E1 = {isa = PBXBuildFile; fileRef = 6E2B9F4A1C3D4B58A7E0F912; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +56,7 @@ E0DA535D7BA9BFAC82BCEBB7 = {isa = PBXFileReference; lastKnownFileType = sourceco
 B6BC6845B25149F6979816F1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/RemoteSwitches.swift; sourceTree = "<group>"; };
 575D6C7AE22A4C84BF1ECDD8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ArchivePassView.swift; sourceTree = "<group>"; };
 05F98C82957A4DCCACB38479 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ArchiveFeaturesViews.swift; sourceTree = "<group>"; };
+6E2B9F4A1C3D4B58A7E0F912 = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +88,7 @@ B6BC6845B25149F6979816F1 = {isa = PBXFileReference; lastKnownFileType = sourceco
 				16EE5B43A20B4FDBA064EDBB,
 				8029B961BFB648C5839187E5,
 				0B0E86BE2D8B471FA9F8E6B9,
+				6E2B9F4A1C3D4B58A7E0F912,
 			);
 			name = DailyBoxScore; path = DailyBoxScore; sourceTree = "<group>";
 		};
@@ -187,6 +190,7 @@ BE4D581A3C47422A9DD0419B = {
 			buildActionMask = 2147483647;
 			files = (
 				F3504FF6815D49299CA31DBE,
+				3D7A1C2E9B4F4E61A0C5D7E1,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

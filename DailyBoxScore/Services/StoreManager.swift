@@ -161,8 +161,10 @@ final class StoreManager: ObservableObject {
             guard case .verified(let t) = result,
                   Self.passIDs.contains(t.productID),
                   t.revocationDate == nil else { continue }
+            // No expiry check here: currentEntitlements already leaves
+            // out expired passes and keeps those in Apple's billing
+            // grace period, whose date can be in the past.
             if let e = t.expirationDate {
-                if e < Date() { continue }
                 expiry = max(expiry ?? e, e)
             } else {
                 lifetime = true
