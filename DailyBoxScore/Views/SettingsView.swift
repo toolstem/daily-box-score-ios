@@ -108,25 +108,21 @@ struct SettingsView: View {
                     SectionHeading(text: "Notifications")
                 }
 
-                if store.paywallEnabled {
+                if store.switches.passMode != .off || store.ownsPass {
                     Section {
-                        if store.isUnlocked {
-                            Label("Season Pass active", systemImage: "checkmark.seal")
-                                .font(.system(.body, design: .serif))
-                        } else {
-                            ForEach(store.products) { product in
-                                Button("Buy \(product.displayName) — \(product.displayPrice)") {
-                                    Task { await store.purchase(product) }
-                                }
-                                .font(.system(.body, design: .serif))
+                        NavigationLink(destination: ArchivePassView()) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(store.ownsPass ? "Archive Pass: active" : "Archive Pass")
+                                    .font(.system(.body, design: .serif))
+                                Text(store.switches.tipsEnabled
+                                     ? "On This Day, Birthday Paper, printing the archive, and tips."
+                                     : "On This Day, Birthday Paper, and printing the archive.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
-                            Button("Restore Purchases") {
-                                Task { await store.updatePurchasedProducts() }
-                            }
-                            .font(.system(.body, design: .serif))
                         }
                     } header: {
-                        SectionHeading(text: "Season Pass")
+                        SectionHeading(text: "Archive Pass")
                     }
                 }
 
@@ -140,7 +136,9 @@ struct SettingsView: View {
             .navigationTitle("Settings")
         }
         .task {
-            await store.loadProducts()
+            if !store.productsLoaded {
+                await store.loadProducts()
+            }
         }
     }
 }

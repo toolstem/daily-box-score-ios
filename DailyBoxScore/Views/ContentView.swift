@@ -129,6 +129,7 @@ struct EditionsListView: View {
                                 SectionHeading(text: "Latest Edition")
                             }
                         }
+                        ArchiveFeaturesSection()
                         Section {
                             yearMonthPicker
                         } header: {

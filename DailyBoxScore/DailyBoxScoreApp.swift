@@ -4,7 +4,14 @@ import SwiftUI
 struct DailyBoxScoreApp: App {
     @StateObject private var feed = FeedService()
     @StateObject private var favorites = FavoritesStore()
-    @StateObject private var store = StoreManager()
+    @StateObject private var switches: RemoteSwitches
+    @StateObject private var store: StoreManager
+
+    init() {
+        let switches = RemoteSwitches()
+        _switches = StateObject(wrappedValue: switches)
+        _store = StateObject(wrappedValue: StoreManager(switches: switches))
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -12,6 +19,7 @@ struct DailyBoxScoreApp: App {
                 .environmentObject(feed)
                 .environmentObject(favorites)
                 .environmentObject(store)
+                .environmentObject(switches)
                 .onAppear {
                     NotificationManager.shared.requestAuthorization()
                     // The reminder toggle in Settings also manages this;
@@ -26,8 +34,11 @@ struct DailyBoxScoreApp: App {
                         await NotificationManager.shared.refreshReminders(using: feed)
                     }
                     Task {
+                        // Remote switches first (kill switch), then what
+                        // the user owns, then prices for the pass screen.
+                        await switches.refresh()
+                        await store.refreshEntitlements()
                         await store.loadProducts()
-                        await store.updatePurchasedProducts()
                     }
                 }
         }

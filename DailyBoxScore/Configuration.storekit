@@ -1,1 +1,104 @@
-{"identifier":"DailyBoxScore","products":[{"displayPrice":"4.99","familyShareable":false,"id":"com.toolstem.dailyboxscore.season2027","internalID":"D8A2B4C6-1E3F-4A5B-8C7D-9E0F1A2B3C4D","localizations":[{"description":"Every edition of the 2027 Major League season, in the classic newspaper agate style.","displayName":"2027 Season Pass","locale":"en_US"}],"type":"nonConsumable"}],"settings":{},"version":[1,0]}
+{
+  "identifier": "DailyBoxScore",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "24.99",
+      "familyShareable": true,
+      "internalID": "971BE407-0818-4323-9B8B-941D95955775",
+      "localizations": [
+        {
+          "description": "On This Day, Birthday Paper, and printing any paper from the archive. One time, never expires.",
+          "displayName": "Archive Pass (Lifetime)",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.omcollective.dailyboxscore.archivepass.lifetime",
+      "referenceName": "Archive Pass Lifetime",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "2.99",
+      "familyShareable": false,
+      "internalID": "75AA555B-B26B-40CD-9D96-537755ED5CAA",
+      "localizations": [
+        {
+          "description": "A one-time thank you. Unlocks nothing.",
+          "displayName": "Small Tip",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.omcollective.dailyboxscore.tip.small",
+      "referenceName": "Tip Small",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "4.99",
+      "familyShareable": false,
+      "internalID": "117A355F-8554-410F-B4F7-5B8178DB479A",
+      "localizations": [
+        {
+          "description": "A one-time thank you. Unlocks nothing.",
+          "displayName": "Medium Tip",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.omcollective.dailyboxscore.tip.medium",
+      "referenceName": "Tip Medium",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "9.99",
+      "familyShareable": false,
+      "internalID": "34D8BC47-6F08-46B9-9B6B-83835C1C7264",
+      "localizations": [
+        {
+          "description": "A one-time thank you. Unlocks nothing.",
+          "displayName": "Large Tip",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.omcollective.dailyboxscore.tip.large",
+      "referenceName": "Tip Large",
+      "type": "Consumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "AC316912-6657-4365-B56A-F48F83DF8D5F",
+      "localizations": [],
+      "name": "Archive Pass",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "9.99",
+          "familyShareable": true,
+          "groupNumber": 1,
+          "internalID": "A6E731A0-47F1-4326-A2D6-53611C645251",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "On This Day, Birthday Paper, and printing any paper from the archive.",
+              "displayName": "Archive Pass",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.omcollective.dailyboxscore.archivepass.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Archive Pass Yearly",
+          "subscriptionGroupID": "AC316912-6657-4365-B56A-F48F83DF8D5F",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}
